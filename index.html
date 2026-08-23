@@ -511,7 +511,7 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
 }
 .hist-amount.income{color:var(--success);}
 .hist-amount.expense{color:var(--text);}
-.hist-edit{
+.hist-edit,.hist-delete{
   width:30px;height:30px;
   border:none;
   background:transparent;
@@ -520,7 +520,20 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
   flex-shrink:0;
   border-radius:8px;
 }
-.hist-edit:active{background:var(--bg-soft);}
+.hist-delete{color:#d9304a;font-size:14px;}
+.hist-edit:active,.hist-delete:active{background:var(--bg-soft);}
+.btn-danger{
+  background:#ffe5e7;color:#d9304a;
+  padding:8px 14px;border-radius:12px;border:1px solid #f4c4c9;font-weight:600;font-family:inherit;cursor:pointer;
+}
+.btn-danger:active{transform:scale(0.97);}
+.edit-acc-btn{
+  border:1.5px solid var(--border);border-radius:10px;background:#fff;padding:10px 8px;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:12px;color:var(--text);
+}
+.edit-acc-btn.active{
+  border-color:var(--accent);background:rgba(107,127,212,0.08);color:var(--accent);
+}
 .empty-state{
   padding:40px 20px;
   text-align:center;
@@ -991,6 +1004,49 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
 
       <hr class="divider">
 
+      <!-- AI 智能识别增强 -->
+      <div id="aiConfigPanel">
+        <div class="section-title" style="padding:0 0 10px;margin-top:6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px;"><path d="M12 2a3 3 0 00-3 3v1H7a3 3 0 00-3 3v2a3 3 0 00-2 2.83V14a3 3 0 002 2.83V19a3 3 0 003 3h2v1a3 3 0 006 0v-1h2a3 3 0 003-3v-2.17A3 3 0 0022 14v-.17a3 3 0 00-2-2.83V9a3 3 0 00-3-3h-2V5a3 3 0 00-3-3z"/></svg>
+          AI 智能识别增强 <span class="sub">规则命中时走规则（秒回/免费），不确定时兜底调用 LLM 语义解析</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">API Base URL</label>
+          <input id="aiBaseInput" class="form-control" placeholder="默认：https://api.siliconflow.cn/v1（国内直连，免费）" autocomplete="off">
+          <div class="sub" style="font-size:12px;color:#888;margin-top:4px;">硅基流动（推荐，免费额度充足）：<code>https://api.siliconflow.cn/v1</code>。兼容 OpenAI 格式即可：如百炼 dashscope.aliyuncs.com/compatible-mode/v1、groq、openai 自家。</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">API Key</label>
+          <input id="aiKeyInput" type="password" class="form-control" placeholder="sk-xxxxxxxxxx（仅本地保存，不上传）" autocomplete="off">
+          <a class="link-btn" href="https://console.siliconflow.cn/account/ak" target="_blank" rel="noopener">🔗 去硅基流动免费申请 Key（注册即送 tokens）</a>
+        </div>
+        <div class="form-group">
+          <label class="form-label">模型</label>
+          <select id="aiModelInput" class="form-control">
+            <option value="deepseek-ai/DeepSeek-V3">DeepSeek-V3（默认，综合能力强，硅基流动）</option>
+            <option value="Qwen/Qwen2.5-7B-Instruct">Qwen2.5-7B-Instruct（响应快，硅基流动）</option>
+            <option value="deepseek-ai/DeepSeek-V2.5">DeepSeek-V2.5（硅基流动）</option>
+            <option value="google/gemma-2-9b-it">Gemma-2-9b（硅基流动）</option>
+            <option value="custom">自定义（下方手动输入模型名）</option>
+          </select>
+          <input id="aiModelCustom" class="form-control" style="margin-top:6px;display:none;" placeholder="自定义模型名，例如 qwen-plus 或 gpt-4o-mini">
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+          <input id="aiAlwaysInput" type="checkbox" style="width:16px;height:16px;">
+          <label for="aiAlwaysInput" style="margin:0;font-weight:500;cursor:pointer;">所有输入都先走 AI（默认关：仅当规则不确定时才调 AI，更省额度）</label>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-secondary" id="btnClearAiKey">清除 Key</button>
+          <button class="btn btn-secondary" id="btnTestAi">🔌 连通性测试</button>
+          <button class="btn btn-primary" id="btnSaveAiConfig">保存 AI 配置</button>
+        </div>
+        <div class="note-box">
+          支持句子：<code>补记大前天和同事聚餐 AA 我付了320</code>、<code>健身房年卡2400，分12个月每月扣悦己200</code>、<code>把刚才那笔奶茶改成快乐社交备注三分糖</code>。复杂句 AI 会拆解成多条正确入账，简单句仍走规则不消耗额度。
+        </div>
+      </div>
+
+      <hr class="divider">
+
       <!-- 收入分配比例 -->
       <div class="section-title" style="padding:6px 0 10px;margin-top:6px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
@@ -1057,6 +1113,50 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
   </div>
 </div>
 
+<!-- Edit Transaction Modal -->
+<div class="modal-mask" id="editModal">
+  <div class="modal" style="border-radius:18px;max-width:460px;">
+    <div class="modal-header">
+      <div class="modal-title">✏️ 编辑 / 删除记录</div>
+      <button class="modal-close" data-close="editModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:10px;">
+        <label class="form-label">交易类型</label>
+        <div id="editTypeText" style="padding:8px 12px;border-radius:12px;background:var(--bg-muted);font-weight:500;"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">金额（元）</label>
+        <input id="editAmount" type="number" step="0.01" min="0" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">所属账户</label>
+        <div id="editAccountPicker" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+      </div>
+      <div class="form-group" id="editIncomeTypeWrap" style="display:none;">
+        <label class="form-label">收入来源</label>
+        <select id="editIncomeType" class="form-control"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注</label>
+        <input id="editRemark" type="text" class="form-control" placeholder="可选，简短描述">
+      </div>
+      <div class="form-group">
+        <label class="form-label">日期</label>
+        <input id="editDate" type="date" class="form-control">
+      </div>
+      <div class="note-box" style="margin-top:6px;">修改金额/账户时，将自动回算四账户余额与本月收支统计；若改到其他月份，本月统计会还原到无该笔的状态，对应月份累计永久余额同步增减。</div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between;">
+      <button class="btn btn-danger" id="btnDeleteTx" style="margin:0;background:#ffe5e7;color:#d9304a;">🗑 删除该笔</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary" data-close="editModal">取消</button>
+        <button class="btn btn-primary" id="btnSaveEdit" style="margin:0;">保存修改</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
@@ -1119,13 +1219,38 @@ const GIST_DESC = '四笔钱记账助手数据（私有 Gist，请不要手动�
 const TOKEN_STORAGE_KEY = 'fourMoneyGhToken';
 const GISTID_STORAGE_KEY = 'fourMoneyGhGistId';
 const PROXY_STORAGE_KEY = 'fourMoneyGhProxy';
+const AI_BASE_KEY = 'fourMoneyAiBase';
+const AI_KEY_KEY = 'fourMoneyAiKey';
+const AI_MODEL_KEY = 'fourMoneyAiModel';
+const AI_ALWAYS_KEY = 'fourMoneyAiAlways';
 const SAVE_DEBOUNCE_MS = 2000;
 const MAX_RETRY = 6;
+
+const AI_BASE_DIRECT = 'https://api.siliconflow.cn/v1';
+const AI_MODEL_DEFAULT = 'deepseek-ai/DeepSeek-V3';
+const AI_MODELS = [
+  { value:'deepseek-ai/DeepSeek-V3', label:'DeepSeek-V3（硅基流动，综合强，默认）' },
+  { value:'Qwen/Qwen2.5-7B-Instruct', label:'Qwen2.5-7B（硅基流动，快）' },
+  { value:'black-forest-labs/FLUX.1-schnell', label:'（示例，勿选——仅占位）', disabled:true }
+];
 
 let ghToken = localStorage.getItem(TOKEN_STORAGE_KEY) || '';   // 用户填的 GitHub PAT
 let ghGistId = localStorage.getItem(GISTID_STORAGE_KEY) || ''; // 第一次创建后缓存的 Gist ID
 let ghProxyMode = localStorage.getItem(PROXY_STORAGE_KEY) || 'direct'; // direct / proxy / fallback
 let cloudReady = !!ghToken;                                   // 有 Token 才算云端可用
+
+// AI 配置
+let aiBaseUrl = localStorage.getItem(AI_BASE_KEY) || AI_BASE_DIRECT;
+let aiApiKey = localStorage.getItem(AI_KEY_KEY) || '';
+let aiModel  = localStorage.getItem(AI_MODEL_KEY) || AI_MODEL_DEFAULT;
+let aiAlways = localStorage.getItem(AI_ALWAYS_KEY) === '1';
+function aiReady(){ return !!(aiApiKey && aiBaseUrl && aiModel); }
+function saveAiConfig({base, key, model, always}){
+  if(base!==undefined){ aiBaseUrl = base.trim() || AI_BASE_DIRECT; localStorage.setItem(AI_BASE_KEY, aiBaseUrl); }
+  if(key!==undefined){  aiApiKey = key.trim(); if(aiApiKey) localStorage.setItem(AI_KEY_KEY, aiApiKey); else localStorage.removeItem(AI_KEY_KEY); }
+  if(model!==undefined){ aiModel = model.trim() || AI_MODEL_DEFAULT; localStorage.setItem(AI_MODEL_KEY, aiModel); }
+  if(always!==undefined){ aiAlways = !!always; localStorage.setItem(AI_ALWAYS_KEY, aiAlways?'1':'0'); }
+}
 
 // 根据当前模式返回 Gist API 前缀
 function getGistApi(){
@@ -1548,6 +1673,163 @@ function detectIntent(text){
   return 'unknown';
 }
 
+/* ================== AI 大模型解析兜底 ================== */
+const ACC_CN_MAP = { survival:'生存底线', improve:'悦己提升', social:'快乐社交', reserve:'风险储备' };
+const ACC_KEY_MAP = { '生存底线':'survival','生存':'survival','悦己提升':'improve','悦己':'improve','快乐社交':'social','快乐':'social','社交':'social','风险储备':'reserve','储备':'reserve','风险':'reserve' };
+const INCOME_TYPE_CN = { '父母生活费':'父母生活费','学校补贴':'学校补贴','助学金':'助学金','勤工俭学':'勤工俭学','奖学金':'奖学金','兼职':'勤工俭学','工资':'勤工俭学','其他收入':'父母生活费' };
+
+function aiSystemPrompt(){
+  const rules = Object.keys(DEFAULT_RULES).map(t=>`- ${t}:生存${DEFAULT_RULES[t].survival}%/悦己${DEFAULT_RULES[t].improve}%/快乐${DEFAULT_RULES[t].social}%/储备${DEFAULT_RULES[t].reserve}%`).join('\n');
+  return `你是研究生四笔钱记账助手的语义解析器。根据用户输入的中文记账句子，返回严格 JSON（不要 markdown 代码块）。
+四个账户：生存底线(survival)、悦己提升(improve)、快乐社交(social)、风险储备(reserve)。
+收入类型默认（识别不到就选父母生活费）：${Object.keys(DEFAULT_RULES).join('、')}。
+收入默认分流规则（仅当你解析为收入且输入未指定分流时才需要拆分多条 entries；若已指定某账户划入可不拆）：
+${rules}
+返回 JSON 结构，只返回一个对象：
+{
+  "kind": "add" | "edit",
+  "entries": [{
+    "type": "income"|"expense",
+    "amount": 数字,
+    "account": "survival|improve|social|reserve",
+    "remark": "简短中文备注，原句关键词",
+    "incomeType": "仅当type=income时，收入类型之一",
+    "dateOffsetDays": 数字，0=今天，1=明天，-1=昨天，-2=前天，依此类推（未提日期则0）
+  }],
+  "edit": {
+    "selector": "最近/刚才/最后一笔/金额=X/备注包含XX/昨天第2笔",
+    "amount": 数字可空,
+    "account": "可空",
+    "remark": "可空",
+    "dateOffsetDays": 可空
+  }
+}
+若句子是纠错/修改：kind="edit"，edit 字段说明改哪笔、改什么；
+否则 kind="add"，entries 放一条或多条（一句多笔如拆分多日、拆分多账户就多条）。
+金额必须为正数数字。注意不要把“AA平摊的我付了X”错误记成X全部，除非用户明确说"我请客"。
+只输出 JSON 原文，不要任何说明文字，不要包 \`\`\`json。`;
+}
+
+async function aiParseText(text, contextHint){
+  if(!aiReady()) return null;
+  const body = JSON.stringify({
+    model: aiModel,
+    temperature: 0.1,
+    max_tokens: 700,
+    messages: [
+      { role:'system', content: aiSystemPrompt() },
+      { role:'user', content: (contextHint||'') + '\n用户输入：'+text }
+    ],
+    stream: false
+  });
+  try{
+    const url = aiBaseUrl.replace(/\/$/,'') + '/chat/completions';
+    const r = await fetch(url, {
+      method:'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+aiApiKey },
+      body
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text().catch(()=>'')).slice(0,100));
+    const j = await r.json();
+    let content = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '';
+    content = content.trim();
+    // 剥掉 ```json 包裹
+    const m = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if(m) content = m[1].trim();
+    // 去掉前后多余字符找 JSON
+    const firstBrace = content.indexOf('{');
+    const lastBrace = content.lastIndexOf('}');
+    if(firstBrace>=0 && lastBrace>firstBrace) content = content.slice(firstBrace, lastBrace+1);
+    try{
+      const parsed = JSON.parse(content);
+      // 标准化 account
+      if(parsed.entries && Array.isArray(parsed.entries)){
+        parsed.entries.forEach(e=>{
+          if(e.account && ACC_KEY_MAP[e.account]) e.account = ACC_KEY_MAP[e.account];
+          if(e.incomeType && !DEFAULT_RULES[e.incomeType]){
+            // 归一化常见别名
+            const k = Object.keys(INCOME_TYPE_CN).find(k=>e.incomeType.includes(k));
+            if(k) e.incomeType = INCOME_TYPE_CN[k];
+          }
+          if(!e.dateOffsetDays) e.dateOffsetDays = 0;
+        });
+      }
+      return parsed;
+    }catch(pe){
+      console.log('AI JSON parse fail', pe, content);
+      return null;
+    }
+  }catch(e){
+    console.log('AI 调用失败', e);
+    return null;
+  }
+}
+
+// 将 AI 返回的 entries 落地成数据
+async function applyAiResult(ai){
+  if(!ai) return false;
+  if(ai.kind === 'edit'){
+    const sel = (ai.edit && ai.edit.selector) || '';
+    const tx = findTargetTransaction(sel + ' ' + (ai.edit.remark||''));
+    if(!tx){ showToast('AI：未找到要修改的交易，请手动点击记录旁的编辑按钮','error'); return false; }
+    const patch = {};
+    if(ai.edit.account && ACC_KEY_MAP[ai.edit.account]) patch.account = ACC_KEY_MAP[ai.edit.account];
+    if(typeof ai.edit.amount==='number' && ai.edit.amount>0) patch.amount = ai.edit.amount;
+    if(typeof ai.edit.remark==='string' && ai.edit.remark.trim()) patch.remark = ai.edit.remark.trim();
+    if(typeof ai.edit.dateOffsetDays==='number'){
+      const d = new Date(); d.setDate(d.getDate()+ai.edit.dateOffsetDays);
+      patch.timestamp = d.getTime();
+    }
+    if(Object.keys(patch).length===0){ showToast('AI：没有识别到要修改的字段','warning'); return false; }
+    patchTransaction(tx.id, patch);
+    showToast('✅ AI 已修改该笔记录','success');
+    return true;
+  }
+  // add
+  const entries = ai.entries || [];
+  if(entries.length===0) return false;
+  let okCount = 0;
+  for(const e of entries){
+    if(!e.amount || !(e.amount>0)) continue;
+    const acc = e.account || 'survival';
+    const ts = (()=>{ const d=new Date(); d.setDate(d.getDate()+(e.dateOffsetDays||0)); return d.getTime(); })();
+    if(e.type === 'income'){
+      const it = e.incomeType && DEFAULT_RULES[e.incomeType] ? e.incomeType : (detectIncomeType(e.remark||'') || '父母生活费');
+      const rule = DATA.allocationRules[it] || DEFAULT_RULES[it];
+      let added = false;
+      for(const a of ACCOUNTS){
+        const pct = rule[a.key]||0; if(pct<=0) continue;
+        const part = +(e.amount * pct / 100).toFixed(2); if(part<=0) continue;
+        DATA.accounts[a.key] = +(DATA.accounts[a.key] + part).toFixed(2);
+        DATA.monthlyStats.income[a.key] = +(DATA.monthlyStats.income[a.key] + part).toFixed(2);
+        DATA.history.push({ id:genId(), type:'income', amount:part, account:a.key, incomeType:it, remark:e.remark||(it+'到账'), timestamp:ts });
+        added = true;
+      }
+      if(!added){
+        DATA.accounts.survival = +(DATA.accounts.survival + e.amount).toFixed(2);
+        DATA.monthlyStats.income.survival = +(DATA.monthlyStats.income.survival + e.amount).toFixed(2);
+        DATA.history.push({id:genId(),type:'income',amount:e.amount,account:'survival',incomeType:it,remark:e.remark||(it+'到账'),timestamp:ts});
+      }
+      okCount++;
+    } else {
+      // 支出：若余额不足跳过强制确认
+      if(DATA.accounts[acc] < e.amount){
+        // 简化：允许负数（AI 来的就不弹窗打断了）
+      }
+      DATA.accounts[acc] = +(DATA.accounts[acc] - e.amount).toFixed(2);
+      DATA.monthlyStats.expense[acc] = +(DATA.monthlyStats.expense[acc] + e.amount).toFixed(2);
+      DATA.history.push({ id:genId(), type:'expense', amount:e.amount, account:acc, remark:e.remark||ACC_MAP[acc].name, timestamp:ts });
+      okCount++;
+    }
+  }
+  if(okCount>0){
+    saveData(); renderAll();
+    showToast(`✅ AI 已记录 ${okCount} 笔`);
+    return true;
+  }
+  return false;
+}
+
 // 纠错指令解析
 const CORRECT_ACTION = ['改成','改为','移到','移至','放到','放至','调整到','调整至','归到','归入','归入到','转入','划到','划至'];
 function parseTargetAccount(text){
@@ -1731,41 +2013,115 @@ function reassignTransaction(id, newAccount, fromCommand){
     showToast('该笔已在【'+ACC_MAP[newAccount].name+'】中');
     return;
   }
-  const oldAcc = tx.account;
-  if(tx.type==='expense'){
-    DATA.accounts[oldAcc] = +(DATA.accounts[oldAcc] + tx.amount).toFixed(2);
-    DATA.accounts[newAccount] = +(DATA.accounts[newAccount] - tx.amount).toFixed(2);
-    DATA.monthlyStats.expense[oldAcc] = +(DATA.monthlyStats.expense[oldAcc] - tx.amount).toFixed(2);
-    DATA.monthlyStats.expense[newAccount] = +(DATA.monthlyStats.expense[newAccount] + tx.amount).toFixed(2);
-  } else {
-    DATA.accounts[oldAcc] = +(DATA.accounts[oldAcc] - tx.amount).toFixed(2);
-    DATA.accounts[newAccount] = +(DATA.accounts[newAccount] + tx.amount).toFixed(2);
-    DATA.monthlyStats.income[oldAcc] = +(DATA.monthlyStats.income[oldAcc] - tx.amount).toFixed(2);
-    DATA.monthlyStats.income[newAccount] = +(DATA.monthlyStats.income[newAccount] + tx.amount).toFixed(2);
-  }
-  tx.account = newAccount;
-  saveData();
-  renderAll();
-  showToast('✅ 已将该笔'+(tx.type==='expense'?'支出':'收入')+'移至【'+ACC_MAP[newAccount].name+'】','success');
+  patchTransaction(id, { account:newAccount });
+  if(!fromCommand) closeModal('reassignModal');
 }
+
+// 通用编辑交易：支持改 amount/account/remark/timestamp/incomeType。自动回算余额与月度统计
+function patchTransaction(id, patch){
+  const idx = DATA.history.findIndex(h=>h.id===id);
+  if(idx<0) return;
+  const tx = DATA.history[idx];
+  const old = { type:tx.type, amount:tx.amount, account:tx.account, incomeType:tx.incomeType, remark:tx.remark, timestamp:tx.timestamp };
+  const nowMonth = getCurrentMonth();
+  const inSameMonth = fmtPeriod(old.timestamp) === nowMonth;
+
+  // 先回滚旧交易对余额/月度统计的影响
+  if(inSameMonth){
+    if(old.type==='expense'){
+      DATA.accounts[old.account] = +(DATA.accounts[old.account] + old.amount).toFixed(2);
+      DATA.monthlyStats.expense[old.account] = +(DATA.monthlyStats.expense[old.account] - old.amount).toFixed(2);
+    } else {
+      DATA.accounts[old.account] = +(DATA.accounts[old.account] - old.amount).toFixed(2);
+      DATA.monthlyStats.income[old.account] = +(DATA.monthlyStats.income[old.account] - old.amount).toFixed(2);
+    }
+  } else {
+    // 不在本月：余额也影响（因为余额是累计永久的），月度统计不动
+    if(old.type==='expense') DATA.accounts[old.account] = +(DATA.accounts[old.account] + old.amount).toFixed(2);
+    else DATA.accounts[old.account] = +(DATA.accounts[old.account] - old.amount).toFixed(2);
+  }
+
+  // 应用 patch
+  if(patch.amount>0) tx.amount = +(+patch.amount).toFixed(2);
+  if(patch.account && ACC_MAP[patch.account]) tx.account = patch.account;
+  if(typeof patch.remark === 'string') tx.remark = patch.remark;
+  if(typeof patch.timestamp === 'number') tx.timestamp = patch.timestamp;
+  if(patch.incomeType && DEFAULT_RULES[patch.incomeType]) tx.incomeType = patch.incomeType;
+
+  // 重新应用新交易的影响（按修改后的月份）
+  const inTargetMonth = fmtPeriod(tx.timestamp) === nowMonth;
+  if(inTargetMonth){
+    if(tx.type==='expense'){
+      DATA.accounts[tx.account] = +(DATA.accounts[tx.account] - tx.amount).toFixed(2);
+      DATA.monthlyStats.expense[tx.account] = +(DATA.monthlyStats.expense[tx.account] + tx.amount).toFixed(2);
+    } else {
+      DATA.accounts[tx.account] = +(DATA.accounts[tx.account] + tx.amount).toFixed(2);
+      DATA.monthlyStats.income[tx.account] = +(DATA.monthlyStats.income[tx.account] + tx.amount).toFixed(2);
+    }
+  } else {
+    if(tx.type==='expense') DATA.accounts[tx.account] = +(DATA.accounts[tx.account] - tx.amount).toFixed(2);
+    else DATA.accounts[tx.account] = +(DATA.accounts[tx.account] + tx.amount).toFixed(2);
+  }
+
+  saveData(); renderAll();
+}
+
+// 删除交易：回滚余额 + 月度统计 + 从 history 移除
+function deleteTransaction(id){
+  const idx = DATA.history.findIndex(h=>h.id===id);
+  if(idx<0) return;
+  const tx = DATA.history[idx];
+  const nowMonth = getCurrentMonth();
+  const inSameMonth = fmtPeriod(tx.timestamp) === nowMonth;
+  if(tx.type==='expense'){
+    DATA.accounts[tx.account] = +(DATA.accounts[tx.account] + tx.amount).toFixed(2);
+    if(inSameMonth) DATA.monthlyStats.expense[tx.account] = +(DATA.monthlyStats.expense[tx.account] - tx.amount).toFixed(2);
+  } else {
+    DATA.accounts[tx.account] = +(DATA.accounts[tx.account] - tx.amount).toFixed(2);
+    if(inSameMonth) DATA.monthlyStats.income[tx.account] = +(DATA.monthlyStats.income[tx.account] - tx.amount).toFixed(2);
+  }
+  DATA.history.splice(idx,1);
+  saveData(); renderAll();
+  showToast('✅ 已删除该笔记录','success');
+}
+
+// 时间戳周期（YYYY-MM）判断
+function fmtPeriod(ts){ const d=new Date(+ts||0); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 
 /* ================== 智能输入主流程 ================== */
 async function handleSmartInput(){
   const text = document.getElementById('smartInput').value.trim();
   if(!text){ showToast('请输入内容','error'); return; }
-  // 1. 纠错指令优先
+  // 0. 纠错/修改意图也尝试 AI（"把刚才那笔改成悦己"同时走规则和 AI）
   const hasCorrectAction = CORRECT_ACTION.some(w=>text.includes(w));
   const hasTarget = parseTargetAccount(text);
   if(hasCorrectAction && hasTarget){
-    await handleCorrectionCommand(text);
+    try{ await handleCorrectionCommand(text); }catch(e){ /* fallthrough */ }
     document.getElementById('smartInput').value='';
+    // 规则没命中但有 AI 则让 AI 再尝试更精细修改
+    if(aiReady() && aiAlways){
+      const ai = await aiParseText(text);
+      if(ai && ai.kind==='edit') await applyAiResult(ai);
+    }
     return;
   }
-  // 2. 识别意图
+  // 0.5 如果用户要求"纯 AI"，或金额识别失败/意图不明，则直接调 AI
+  let amount = extractAmount(text);
   const intent = detectIntent(text);
-  const amount = extractAmount(text);
+  const matched = matchExpenseAccount(text);
+  const ruleUncertain = (amount<=0) || (intent==='unknown' && !detectIncomeType(text)) || (matched.length>1) || /昨天|前天|大前天|刚才|最近|AA|平摊|拆分|分/.test(text);
+  if(aiReady() && (aiAlways || ruleUncertain)){
+    showToast('🤖 AI 正在识别…（可随时点右上角 × 取消）','info');
+    const ai = await aiParseText(text);
+    if(ai){
+      const ok = await applyAiResult(ai);
+      if(ok){ document.getElementById('smartInput').value=''; return; }
+      // AI 返回 null 或失败，fallthrough 走规则
+    }
+  }
+  // 1. 规则识别
   if(amount<=0){
-    showToast('未识别到金额，请包含数字（如5000或五千）','error');
+    showToast('未识别到金额，请包含数字（如5000或五千）；或在设置中启用 AI 兜底','error');
     return;
   }
   if(intent==='income' || (intent==='unknown' && detectIncomeType(text))){
@@ -1774,24 +2130,17 @@ async function handleSmartInput(){
     document.getElementById('smartInput').value='';
     return;
   }
-  // 默认支出
-  const matched = matchExpenseAccount(text);
   if(matched.length===0){
-    showToast('未匹配到支出账户，请使用手动录入','error');
+    showToast('未匹配到支出账户，可在设置启用 AI 兜底或使用手动录入','error');
     return;
   }
-  // 多账户匹配取最高优先级
   const targetAcc = matched[0];
-  // 生成备注：去除金额数字、关键词
   let remark = text;
-  // 去除阿拉伯数字和"块/元/花了/买"等
   remark = remark.replace(/\d+(\.\d+)?\s*(块|元)?/g,'');
   remark = remark.replace(/[零一二三四五六七八九十百千万两]+/g,'');
   remark = remark.replace(/花了|花掉|消费|支出|买了|付了|买|付|充了|充值|吃饭|块|元/g,'');
   remark = remark.replace(/[,，。、!?！？\s]+/g,' ').trim();
   if(!remark) remark = ACC_MAP[targetAcc].name;
-
-  // 匹配确认弹窗
   await showMatchConfirm(targetAcc, amount, remark, matched);
 }
 
@@ -1887,6 +2236,7 @@ function renderHistory(){
     return;
   }
   list.innerHTML = '';
+  const DEL_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"></path><path d="M10 11v6M14 11v6M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>';
   for(const h of hist){
     const acc = ACC_MAP[h.account];
     const item = document.createElement('div');
@@ -1903,13 +2253,65 @@ function renderHistory(){
         </div>
       </div>
       <div class="hist-amount ${isIncome?'income':'expense'}">${isIncome?'+':'-'}¥${fmt(h.amount)}</div>
-      <button class="hist-edit" data-id="${h.id}" title="重新分配" style="color:var(--text-muted);">${ICONS.edit}</button>
+      <button class="hist-edit" data-id="${h.id}" title="编辑" style="color:var(--text-muted);">${ICONS.edit}</button>
+      <button class="hist-delete" data-id="${h.id}" title="删除">${DEL_ICON}</button>
     `;
     list.appendChild(item);
   }
   list.querySelectorAll('.hist-edit').forEach(btn=>{
-    btn.addEventListener('click', ()=>openReassign(btn.dataset.id));
+    btn.addEventListener('click', ()=>openEditTx(btn.dataset.id));
   });
+  list.querySelectorAll('.hist-delete').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const ok = await showConfirm('确定要删除该笔记录吗？四账户余额与本月统计会同步回算。','删除记录','确定删除');
+      if(ok) deleteTransaction(btn.dataset.id);
+    });
+  });
+}
+
+/* ================== 编辑交易 Modal 控制 ================== */
+let editTargetId = null;
+let editPickedAccount = null;
+function openEditTx(id){
+  const tx = DATA.history.find(h=>h.id===id);
+  if(!tx) return;
+  editTargetId = id;
+  editPickedAccount = tx.account;
+  document.getElementById('editTypeText').textContent = (tx.type==='income'?'📥 收入（会按来源规则分流，编辑仅调整单条分流记录）':'📤 支出') + ' · id:'+id.slice(0,8);
+  document.getElementById('editAmount').value = tx.amount;
+  document.getElementById('editRemark').value = tx.remark || '';
+  const d = new Date(tx.timestamp);
+  document.getElementById('editDate').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  // 账户选择器
+  const picker = document.getElementById('editAccountPicker');
+  picker.innerHTML = '';
+  ACCOUNTS.forEach(a=>{
+    const b = document.createElement('button');
+    b.type='button'; b.className='edit-acc-btn'+(a.key===tx.account?' active':'');
+    b.innerHTML = `<span style="width:14px;height:14px;display:inline-block;color:${a.color}">${a.icon}</span>${a.name}`;
+    b.onclick = ()=>{
+      editPickedAccount = a.key;
+      Array.from(picker.children).forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+    };
+    picker.appendChild(b);
+  });
+  // 收入来源
+  const wrap = document.getElementById('editIncomeTypeWrap');
+  const sel = document.getElementById('editIncomeType');
+  if(tx.type==='income'){
+    wrap.style.display = '';
+    sel.innerHTML = '';
+    Object.keys(DEFAULT_RULES).forEach(k=>{
+      const o = document.createElement('option');
+      o.value = k; o.textContent = k;
+      if(k===tx.incomeType) o.selected = true;
+      sel.appendChild(o);
+    });
+  } else {
+    wrap.style.display = 'none';
+  }
+  openModal('editModal');
 }
 
 /* ================== 重新分配 ================== */
@@ -2025,6 +2427,7 @@ function updateAllRowSums(){
 function openSettings(){
   renderAllocTable();
   renderGhConfigUI();
+  renderAiConfigUI();
   openModal('settingsModal');
 }
 // 填充设置里的 GitHub 配置
@@ -2036,6 +2439,31 @@ function renderGhConfigUI(){
   // 代理节点 radio
   const radios = document.querySelectorAll('input[name="ghProxy"]');
   radios.forEach(r=>{ r.checked = (r.value === ghProxyMode); });
+}
+// 填充设置里的 AI 配置
+function renderAiConfigUI(){
+  document.getElementById('aiBaseInput').value = aiBaseUrl || '';
+  document.getElementById('aiKeyInput').value = aiApiKey || '';
+  const sel = document.getElementById('aiModelInput');
+  const inp = document.getElementById('aiModelCustom');
+  // 若当前 model 正好在下拉 option values 里，直接选；否则视为 custom
+  const known = Array.from(sel.options).map(o=>o.value);
+  if(known.includes(aiModel)){
+    sel.value = aiModel;
+    inp.style.display = 'none';
+    inp.value = '';
+  } else {
+    sel.value = 'custom';
+    inp.style.display = '';
+    inp.value = aiModel || '';
+  }
+  document.getElementById('aiAlwaysInput').checked = !!aiAlways;
+}
+// 当前选择的模型（如果是 custom 取自定义输入框）
+function selectedAiModel(){
+  const v = document.getElementById('aiModelInput').value;
+  if(v !== 'custom') return v;
+  return document.getElementById('aiModelCustom').value.trim();
 }
 // 提交 GitHub 配置（从表单读取）
 function submitGhConfig(){
@@ -2206,6 +2634,65 @@ function bindEvents(){
   // GitHub 配置按钮
   document.getElementById('btnSaveGhConfig').addEventListener('click', submitGhConfig);
   document.getElementById('btnClearGhConfig').addEventListener('click', resetGhConfig);
+  // AI 配置按钮
+  document.getElementById('aiModelInput').addEventListener('change', e=>{
+    document.getElementById('aiModelCustom').style.display = e.target.value==='custom'?'':'none';
+  });
+  document.getElementById('btnSaveAiConfig').addEventListener('click', ()=>{
+    const base = document.getElementById('aiBaseInput').value.trim();
+    const key = document.getElementById('aiKeyInput').value.trim();
+    const model = selectedAiModel();
+    const always = document.getElementById('aiAlwaysInput').checked;
+    saveAiConfig({base, key, model, always});
+    renderAiConfigUI();
+    showToast('✅ AI 配置已保存。规则识别不确定时会自动调用 '+ (model||AI_MODEL_DEFAULT),'success');
+  });
+  document.getElementById('btnClearAiKey').addEventListener('click', ()=>{
+    saveAiConfig({key:''});
+    document.getElementById('aiKeyInput').value = '';
+    showToast('已清除 AI Key','warning');
+  });
+  document.getElementById('btnTestAi').addEventListener('click', async ()=>{
+    // 保存一次再测
+    const base = document.getElementById('aiBaseInput').value.trim();
+    const key = document.getElementById('aiKeyInput').value.trim();
+    const model = selectedAiModel();
+    saveAiConfig({base, key, model});
+    if(!aiReady()){ showToast('请先填 API Key','error'); return; }
+    showToast('🤖 正在测试 AI 调用…','info');
+    const r = await aiParseText('测试识别一句话：午餐花了28元');
+    if(r && (r.entries||r.edit)) showToast('✅ AI 连通正常，识别结果：'+JSON.stringify(r).slice(0,120),'success');
+    else showToast('❌ AI 调用失败，请检查 Base/Key/模型/网络（国内网络可尝试选中转节点或 VPN）','error');
+  });
+  // 编辑 Modal：保存 / 删除
+  document.getElementById('btnSaveEdit').addEventListener('click', ()=>{
+    if(!editTargetId) return;
+    const amount = parseFloat(document.getElementById('editAmount').value);
+    if(!amount || amount<=0){ showToast('金额无效','error'); return; }
+    const remark = document.getElementById('editRemark').value.trim();
+    const dateStr = document.getElementById('editDate').value;
+    const [y,m,d] = (dateStr||'').split('-').map(x=>parseInt(x));
+    const ts = (y && m && d) ? (new Date(y, m-1, d, 12, 0, 0, 0).getTime()) : null;
+    const tx = DATA.history.find(h=>h.id===editTargetId);
+    if(!tx) return;
+    const patch = { amount, account:editPickedAccount, remark };
+    if(typeof ts === 'number') patch.timestamp = ts;
+    if(tx.type === 'income'){
+      const sel = document.getElementById('editIncomeType').value;
+      if(sel && DEFAULT_RULES[sel]) patch.incomeType = sel;
+    }
+    patchTransaction(editTargetId, patch);
+    closeModal('editModal');
+    showToast('✅ 已保存修改','success');
+  });
+  document.getElementById('btnDeleteTx').addEventListener('click', async ()=>{
+    if(!editTargetId) return;
+    const ok = await showConfirm('确定删除该笔记录吗？删除后四账户余额与本月统计自动回算。','删除确认','确定删除');
+    if(ok){
+      deleteTransaction(editTargetId);
+      closeModal('editModal');
+    }
+  });
   // 同步指示器：点击手动同步（未填 Token → 打开设置）
   document.getElementById('syncIndicator').addEventListener('click', ()=>{
     if(!ghToken){ openSettings(); showToast('请先在设置中填入 GitHub Token（勾 gist 权限）','warning'); return; }
