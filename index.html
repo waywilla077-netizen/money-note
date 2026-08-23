@@ -1,0 +1,2099 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="description" content="研究生四笔钱智能记账助手 - 生存底线/悦己提升/快乐社交/风险储备四账户体系，支持智能文字录入、自然语言纠错、收入自动分流。">
+<meta name="keywords" content="记账,研究生,四笔钱,预算,理财,智能记账,自然语言">
+<meta name="author" content="四笔钱记账助手">
+<meta property="og:title" content="四笔钱智能记账助手">
+<meta property="og:description" content="研究生专属四账户智能记账工具，数据本地存储。">
+<meta property="og:type" content="website">
+<title>四笔钱智能记账助手</title>
+<style>
+:root{
+  --color-survival:#5b8def;      /* 沉稳蓝 - 生存底线 */
+  --color-improve:#7eb8a0;       /* 薄荷绿 - 悦己提升 */
+  --color-social:#e8a87c;        /* 活力橙 - 快乐社交 */
+  --color-reserve:#9b8ad4;       /* 优雅紫 - 风险储备 */
+  --bg:#f0f0f0;
+  --bg-soft:rgba(255,255,255,0.6);
+  --card-bg:rgba(255,255,255,0.55);  /* 半透明白卡片 */
+  --card-bg-solid:#ffffff;
+  --text:#1a1a1a;                /* 深黑色文字 */
+  --text-light:#4a4a4a;          /* 深灰色文字 */
+  --text-muted:#7a7a7a;          /* 灰色文字 */
+  --border:rgba(0,0,0,0.08);
+  --border-strong:rgba(0,0,0,0.15);
+  --warning:#d48806;
+  --danger:#dc2626;
+  --success:#059669;
+  --shadow:0 4px 20px rgba(0,0,0,0.08);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.12);
+  --glass-blur:blur(16px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:20px;
+  position:relative;
+  overflow-x:hidden;
+}
+.app{
+  max-width:480px;
+  margin:0 auto;
+  min-height:100vh;
+  background:transparent;
+  position:relative;
+  z-index:1;
+}
+
+/* ===== 响应式左右布局（电脑端） ===== */
+@media(min-width:768px){
+  .app{
+    max-width:1200px;
+    display:grid;
+    grid-template-columns:320px 1fr;
+    gap:24px;
+    padding:24px;
+    align-items:flex-start;
+  }
+  .app .header-col{
+    position:sticky;
+    top:24px;
+  }
+  .app .main-col{
+    min-width:0;
+  }
+  .bottom-bar{
+    position:fixed;
+    bottom:0;left:0;right:0;
+    max-width:1200px;
+    margin:0 auto;
+  }
+  .section{
+    padding:14px 0 6px;
+  }
+  .accounts{
+    padding:14px 0 6px;
+  }
+  .header{
+    position:static;
+    border-radius:20px;
+    margin-bottom:12px;
+  }
+}
+
+/* Header */
+.header{
+  background:rgba(255,255,255,0.55);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  padding:18px 16px 16px;
+  border-bottom:1px solid var(--border);
+  position:sticky;
+  top:0;
+  z-index:50;
+  box-shadow:0 2px 20px rgba(107,127,212,0.06);
+  height:180px;
+}
+.header-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:14px;
+}
+.header-title{
+  font-size:18px;
+  font-weight:600;
+  letter-spacing:0.5px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.icon-btn{
+  width:40px;height:40px;
+  border:none;
+  background:var(--bg-soft);
+  border-radius:50%;
+  font-size:18px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform 0.15s,background 0.15s;
+  color:var(--text);
+}
+.icon-btn:active{transform:scale(0.9);background:#ddd7cd;}
+
+/* 同步状态指示器 */
+.header-actions{display:flex;gap:8px;align-items:center;}
+.sync-indicator{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  height:32px;
+  padding:0 12px;
+  border:none;
+  background:var(--bg-soft);
+  border-radius:16px;
+  font-size:11px;
+  color:var(--text-light);
+  cursor:pointer;
+  transition:transform 0.15s,background 0.15s;
+  letter-spacing:0.3px;
+  -webkit-tap-highlight-color:transparent;
+}
+.sync-indicator:active{transform:scale(0.95);}
+.sync-indicator:hover{background:rgba(0,0,0,0.06);}
+.sync-dot{
+  width:7px;height:7px;
+  border-radius:50%;
+  background:#9ca3af;
+  transition:background 0.25s;
+  flex-shrink:0;
+}
+.sync-indicator.pending .sync-dot{background:var(--warning);}
+.sync-indicator.syncing .sync-dot{background:#3b82f6;animation:sync-pulse 1s infinite;}
+.sync-indicator.synced .sync-dot{background:var(--success);}
+.sync-indicator.error .sync-dot{background:var(--danger);}
+.sync-indicator.offline .sync-dot{background:#9ca3af;}
+@keyframes sync-pulse{0%,100%{opacity:1;}50%{opacity:0.25;}}
+.total-card{
+  background:rgba(255,255,255,0.85);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:18px 20px;
+  color:#1a1a1a;
+  box-shadow:var(--shadow);
+  position:relative;
+  overflow:hidden;
+  height:90px;
+}
+.total-card::before{
+  content:"";
+  position:absolute;
+  top:-50%;left:-50%;
+  width:200%;height:200%;
+  background:radial-gradient(circle at 30% 30%, rgba(91,141,239,0.06) 0%, transparent 40%);
+  pointer-events:none;
+}
+.total-label{
+  font-size:12px;
+  color:#7a7a7a;
+  margin-bottom:4px;
+  letter-spacing:1px;
+}
+.total-amount{
+  font-size:28px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  color:#1a1a1a;
+}
+.total-amount .yuan{font-size:16px;font-weight:500;margin-right:2px;color:#4a4a4a;}
+.scheme-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  margin-top:8px;
+  font-size:11px;
+  background:rgba(0,0,0,0.05);
+  color:#4a4a4a;
+  padding:3px 9px;
+  border-radius:10px;
+}
+
+/* Tip banner */
+.tip{
+  margin:12px 16px 0;
+  padding:9px 12px;
+  background:rgba(255,255,255,0.6);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--border);
+  border-radius:10px;
+  font-size:12px;
+  color:#1a1a1a;
+  line-height:1.5;
+}
+
+/* Account cards */
+.accounts{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  padding:14px 16px 6px;
+}
+.acc-card{
+  background:var(--card-bg);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border-radius:16px;
+  padding:14px;
+  box-shadow:var(--shadow);
+  border:1px solid var(--border);
+  position:relative;
+  overflow:hidden;
+  transition:transform 0.2s, box-shadow 0.2s;
+}
+.acc-card:active{
+  transform:scale(0.98);
+}
+.acc-card::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg, var(--acc-color), transparent);
+  box-shadow:0 0 8px var(--acc-color);
+}
+.acc-head{
+  display:flex;align-items:center;gap:6px;
+  margin-bottom:8px;
+}
+.acc-emoji{font-size:18px;}
+.acc-name{
+  font-size:13px;
+  font-weight:600;
+  color:var(--text);
+}
+.acc-balance{
+  font-size:20px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  margin-bottom:8px;
+  color:var(--text);
+}
+.acc-balance .yuan{font-size:12px;color:var(--text-light);font-weight:500;}
+.acc-stats{
+  display:flex;
+  justify-content:space-between;
+  font-size:11px;
+  color:var(--text-light);
+  margin-bottom:7px;
+}
+.acc-stats span b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;}
+.progress{
+  height:5px;
+  background:var(--bg-soft);
+  border-radius:3px;
+  overflow:hidden;
+}
+.progress-bar{
+  height:100%;
+  border-radius:3px;
+  transition:width 0.4s ease,background 0.3s;
+  background:var(--acc-color);
+}
+
+/* Section */
+.section{
+  padding:14px 16px 6px;
+}
+.section-title{
+  font-size:14px;
+  font-weight:600;
+  color:var(--text);
+  margin-bottom:10px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:rgba(155,138,212,0.18);
+  border:1px solid rgba(155,138,212,0.35);
+  border-radius:12px;
+  padding:8px 14px;
+}
+.section-title .sub{font-size:11px;color:var(--text-muted);font-weight:400;margin-left:4px;}
+
+/* Smart input */
+.smart-box{
+  background:var(--card-bg);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border-radius:16px;
+  padding:14px;
+  box-shadow:var(--shadow);
+  border:1px solid var(--border);
+}
+.smart-input{
+  width:100%;
+  font-size:16px;
+  padding:12px 14px;
+  border:1.5px solid var(--border);
+  border-radius:12px;
+  background:rgba(255,255,255,0.5);
+  color:var(--text);
+  font-family:inherit;
+  resize:none;
+  min-height:48px;
+  transition:border-color 0.2s, box-shadow 0.2s;
+}
+.smart-input:focus{
+  outline:none;
+  border-color:var(--color-survival);
+  background:rgba(255,255,255,0.8);
+  box-shadow:0 0 0 3px rgba(107,127,212,0.1);
+}
+.smart-input::placeholder{
+  font-size:12px;
+  color:var(--text-muted);
+  line-height:1.6;
+}
+.smart-hint{
+  font-size:11px;
+  color:var(--text-muted);
+  margin-top:6px;
+  line-height:1.5;
+}
+.btn{
+  border:none;
+  border-radius:10px;
+  font-size:15px;
+  font-weight:600;
+  padding:12px 16px;
+  cursor:pointer;
+  font-family:inherit;
+  transition:transform 0.12s,opacity 0.15s,background 0.15s;
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+}
+.btn:active{transform:scale(0.97);}
+.btn-primary{
+  background:rgba(255,182,193,0.7);
+  color:#1a1a1a;
+  width:100%;
+  margin-top:10px;
+  box-shadow:0 4px 14px rgba(255,182,193,0.3);
+  border:1px solid rgba(255,182,193,0.4);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+}
+.btn-primary:active{
+  box-shadow:0 2px 8px rgba(107,127,212,0.2);
+}
+.btn-secondary{
+  background:var(--bg-soft);
+  color:var(--text);
+}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-success{background:var(--success);color:#fff;}
+.btn-block{width:100%;}
+.btn-sm{font-size:13px;padding:9px 12px;min-height:38px;}
+
+/* Manual tabs */
+.tabs{
+  display:flex;
+  background:rgba(107,127,212,0.06);
+  border-radius:12px;
+  padding:3px;
+  margin-bottom:12px;
+}
+.tab{
+  flex:1;
+  text-align:center;
+  padding:9px;
+  font-size:14px;
+  font-weight:600;
+  color:var(--text-light);
+  border-radius:8px;
+  cursor:pointer;
+  transition:all 0.2s;
+  min-height:38px;
+  display:flex;align-items:center;justify-content:center;
+}
+.tab.active{
+  background:rgba(255,255,255,0.8);
+  color:var(--text);
+  box-shadow:var(--shadow);
+}
+.form-group{margin-bottom:10px;}
+.form-label{
+  display:block;
+  font-size:12px;
+  color:var(--text-light);
+  margin-bottom:5px;
+  font-weight:500;
+}
+.form-control{
+  width:100%;
+  font-size:16px;
+  padding:11px 14px;
+  border:1.5px solid var(--border);
+  border-radius:12px;
+  background:rgba(255,255,255,0.5);
+  color:var(--text);
+  font-family:inherit;
+  min-height:44px;
+  transition:border-color 0.2s, box-shadow 0.2s;
+}
+.form-control:focus{
+  outline:none;
+  border-color:var(--color-survival);
+  background:rgba(255,255,255,0.8);
+  box-shadow:0 0 0 3px rgba(107,127,212,0.1);
+}
+select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%238a857e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+
+/* History */
+.history-list{
+  background:var(--card-bg);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:var(--shadow);
+  border:1px solid var(--border);
+}
+.history-item{
+  display:flex;
+  align-items:center;
+  padding:12px 14px;
+  border-bottom:1px solid var(--border);
+  gap:10px;
+}
+.history-item:last-child{border-bottom:none;}
+.hist-icon{
+  width:32px;height:32px;
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+  flex-shrink:0;
+  opacity:0.8;
+}
+.hist-body{flex:1;min-width:0;}
+.hist-remark{
+  font-size:14px;
+  font-weight:500;
+  color:var(--text);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.hist-meta{
+  font-size:11px;
+  color:var(--text-muted);
+  margin-top:2px;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  flex-wrap:wrap;
+}
+.hist-tag{
+  padding:1px 6px;
+  border-radius:6px;
+  font-size:10px;
+  font-weight:600;
+  color:#fff;
+}
+.hist-amount{
+  font-size:15px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  flex-shrink:0;
+}
+.hist-amount.income{color:var(--success);}
+.hist-amount.expense{color:var(--text);}
+.hist-edit{
+  width:30px;height:30px;
+  border:none;
+  background:transparent;
+  font-size:15px;
+  cursor:pointer;
+  flex-shrink:0;
+  border-radius:8px;
+}
+.hist-edit:active{background:var(--bg-soft);}
+.empty-state{
+  padding:40px 20px;
+  text-align:center;
+  color:var(--text-muted);
+  font-size:13px;
+}
+.empty-state .icon{font-size:36px;display:block;margin:0 auto 8px;opacity:0.6;}
+
+/* Bottom bar */
+.bottom-bar{
+  position:fixed;
+  bottom:12px;
+  right:12px;
+  left:auto;
+  background:rgba(255,255,255,0.7);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:4px 6px;
+  z-index:40;
+  width:auto;
+  max-width:none;
+  margin:0;
+  display:flex;
+  gap:4px;
+  box-shadow:var(--shadow);
+}
+.bottom-bar .btn{
+  flex:none;
+  font-size:10px;
+  padding:3px 8px;
+  min-height:auto;
+  border-radius:8px;
+}
+.bottom-bar .btn svg{
+  width:10px;
+  height:10px;
+}
+#btnExport,#btnImport,#btnClear{height:22px;}
+
+/* Modal */
+.modal-mask{
+  position:fixed;
+  inset:0;
+  background:rgba(58,61,82,0.4);
+  z-index:100;
+  display:none;
+  align-items:flex-end;
+  justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.modal-mask.show{display:flex;animation:fadeIn 0.2s;}
+.modal{
+  background:rgba(255,255,255,0.92);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  width:100%;
+  max-width:480px;
+  border-radius:20px 20px 0 0;
+  max-height:88vh;
+  overflow-y:auto;
+  animation:slideUp 0.3s cubic-bezier(0.32,0.72,0,1);
+  box-shadow:0 -8px 32px rgba(107,127,212,0.15);
+}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.modal-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:16px;
+  border-bottom:1px solid var(--border);
+  position:sticky;
+  top:0;
+  background:transparent;
+  border-radius:20px 20px 0 0;
+  z-index:1;
+}
+.modal-title{font-size:16px;font-weight:600;}
+.modal-close{
+  width:32px;height:32px;
+  border:none;
+  background:var(--bg-soft);
+  border-radius:50%;
+  font-size:16px;
+  cursor:pointer;
+  color:var(--text);
+}
+.modal-body{padding:16px;}
+.modal-footer{
+  padding:12px 16px;
+  border-top:1px solid var(--border);
+  display:flex;
+  gap:8px;
+  position:sticky;
+  bottom:0;
+  background:#fff;
+}
+.modal-footer .btn{flex:1;}
+
+/* Allocation table */
+.alloc-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:12px;
+}
+.alloc-table th,.alloc-table td{
+  padding:8px 4px;
+  text-align:center;
+  border-bottom:1px solid var(--border);
+}
+.alloc-table th{
+  font-size:11px;
+  color:var(--text-light);
+  font-weight:600;
+  background:rgba(107,127,212,0.05);
+}
+.alloc-table td:first-child{
+  text-align:left;
+  font-weight:500;
+  font-size:13px;
+  color:var(--text);
+  white-space:nowrap;
+}
+.alloc-input{
+  width:44px;
+  font-size:14px;
+  padding:6px 2px;
+  border:1.5px solid var(--border);
+  border-radius:6px;
+  text-align:center;
+  font-family:inherit;
+  color:var(--text);
+}
+.alloc-input:focus{
+  outline:none;
+  border-color:var(--color-survival);
+  box-shadow:0 0 0 2px rgba(107,127,212,0.1);
+}
+.row-sum{font-size:11px;color:var(--text-muted);font-weight:600;}
+.row-sum.ok{color:var(--success);}
+.row-sum.bad{color:var(--danger);}
+.note-box{
+  margin-top:14px;
+  padding:10px;
+  background:#faf8f4;
+  border-radius:8px;
+  font-size:11px;
+  color:var(--text-light);
+  line-height:1.6;
+}
+
+/* Toast */
+.toast-wrap{
+  position:fixed;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  z-index:200;
+  pointer-events:none;
+  width:80%;
+  max-width:320px;
+  text-align:center;
+}
+.toast{
+  background:rgba(58,61,82,0.9);
+  backdrop-filter:var(--glass-blur);
+  color:#fff;
+  padding:14px 18px;
+  border-radius:14px;
+  font-size:14px;
+  font-weight:500;
+  box-shadow:0 8px 32px rgba(107,127,212,0.2);
+  display:inline-block;
+  animation:toastIn 0.25s,toastOut 0.3s 1.6s forwards;
+  line-height:1.5;
+  border:1px solid rgba(255,255,255,0.1);
+}
+.toast.success{background:rgba(126,200,160,0.92);}
+.toast.error{background:rgba(224,122,122,0.92);}
+.toast.warning{background:rgba(232,196,125,0.92);}
+@keyframes toastIn{from{opacity:0;transform:scale(0.85);}to{opacity:1;transform:scale(1);}}
+@keyframes toastOut{to{opacity:0;transform:scale(0.9);}}
+
+/* Reassign modal buttons */
+.reassign-info{
+  background:#faf8f4;
+  border-radius:10px;
+  padding:12px;
+  margin-bottom:14px;
+  font-size:13px;
+}
+.reassign-info b{color:var(--text);}
+.reassign-btns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.reassign-btn{
+  padding:14px 8px;
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  background:#fff;
+  cursor:pointer;
+  font-size:14px;
+  font-weight:600;
+  color:var(--text);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  min-height:44px;
+  justify-content:center;
+  font-family:inherit;
+  transition:transform 0.12s;
+}
+.reassign-btn:active{transform:scale(0.96);}
+.reassign-btn .emo{width:20px;height:20px;display:flex;align-items:center;justify-content:center;}
+.reassign-btn .emo svg{width:100%;height:100%;}
+.reassign-btn.current{border-color:var(--text);background:var(--bg-soft);}
+
+.confirm-text{font-size:14px;line-height:1.7;color:var(--text);}
+.confirm-text .danger{color:var(--danger);font-weight:600;}
+.confirm-text .warn{color:var(--warning);font-weight:600;}
+
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.muted{color:var(--text-muted);font-size:12px;}
+
+/* 滚动条美化 */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(107,127,212,0.2);border-radius:2px;}
+
+/* 固定背景 */
+.bg-fixed{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  z-index:0;
+  background-image:url('https://images.unsplash.com/photo-1500964757637-c85e8a162699?w=1920&q=80');
+  background-size:cover;
+  background-position:center;
+}
+.bg-fixed::after{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  background:linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
+  pointer-events:none;
+}
+
+/* 图标样式 */
+.acc-icon{
+  width:20px;height:20px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.acc-icon svg{
+  width:100%;height:100%;
+}
+.hist-icon svg{
+  width:18px;height:18px;
+}
+.empty-state .icon{
+  width:48px;height:48px;
+  margin:0 auto 12px;
+  opacity:0.4;
+}
+.empty-state .icon svg{
+  width:100%;height:100%;
+}
+</style>
+</head>
+<body>
+<!-- 固定背景 -->
+<div class="bg-fixed"></div>
+
+<div class="app">
+  <!-- 左侧：输入内容区 -->
+  <div class="main-col">
+    <!-- Smart input -->
+    <div class="section">
+      <div class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        智能文字录入 <span class="sub">主推</span>
+      </div>
+      <div class="smart-box">
+        <textarea class="smart-input" id="smartInput" placeholder="例如：奖学金到账五千&#10;或：食堂吃饭花了20&#10;或：把刚才那笔改成悦己"></textarea>
+        <div class="smart-hint">支持中文数字（五千/三百/一万二）、收入关键词、支出自动匹配账户、自然语言纠错指令。</div>
+        <button class="btn btn-primary" id="btnSmart">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13m0 0l5 5m-5-5l-5 5"/></svg>
+          智能识别
+        </button>
+      </div>
+    </div>
+
+    <!-- Manual input -->
+    <div class="section">
+      <div class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px;"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        手动备用录入
+      </div>
+      <div class="smart-box">
+        <div class="tabs">
+          <div class="tab active" data-tab="income">收入</div>
+          <div class="tab" data-tab="expense">支出</div>
+        </div>
+        <div id="manualIncome">
+          <div class="form-group">
+            <label class="form-label">收入来源</label>
+            <select class="form-control" id="manualIncomeType">
+              <option>父母生活费</option>
+              <option>学校补贴</option>
+              <option>助学金</option>
+              <option>勤工俭学</option>
+              <option>奖学金</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">金额（元）</label>
+            <input type="number" class="form-control" id="manualIncomeAmount" placeholder="0.00" step="0.01" min="0">
+          </div>
+          <button class="btn btn-primary" id="btnManualIncome">确认收入</button>
+        </div>
+        <div id="manualExpense" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">支出账户</label>
+            <select class="form-control" id="manualExpenseAccount">
+              <option value="survival">生存底线</option>
+              <option value="improve">悦己提升</option>
+              <option value="social">快乐社交</option>
+              <option value="reserve">风险储备</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">金额（元）</label>
+            <input type="number" class="form-control" id="manualExpenseAmount" placeholder="0.00" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">备注</label>
+            <input type="text" class="form-control" id="manualExpenseRemark" placeholder="如：食堂午餐">
+          </div>
+          <button class="btn btn-primary" id="btnManualExpense">确认支出</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="section">
+      <div class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        支出明细 <span class="sub">最近 50 条</span>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+
+    <div style="height:20px;"></div>
+  </div>
+
+  <!-- 右侧：标题+余额+账户卡片 -->
+  <div class="header-col">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-top">
+        <div class="header-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          记账助手
+        </div>
+        <div class="header-actions">
+          <button class="sync-indicator" id="syncIndicator" title="点击手动同步">
+            <span class="sync-dot"></span>
+            <span class="sync-text">未同步</span>
+          </button>
+          <button class="icon-btn" id="btnSettings" aria-label="设置">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="total-card">
+        <div class="total-label">本月总可支配余额</div>
+        <div class="total-amount"><span class="yuan">¥</span><span id="totalBalance">0.00</span></div>
+        <div class="scheme-tag" id="schemeTag">方案：默认经典</div>
+      </div>
+    </div>
+
+    <!-- Tip -->
+    <div class="tip">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+      数据存储在本地浏览器，更换设备请使用【导出/导入】功能手动同步。
+    </div>
+
+    <!-- Account cards -->
+    <div class="accounts" id="accountsGrid"></div>
+  </div>
+</div>
+
+<!-- Bottom bar -->
+<div class="bottom-bar">
+  <button class="btn btn-secondary" id="btnExport">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    导出
+  </button>
+  <button class="btn btn-secondary" id="btnImport">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    导入
+  </button>
+  <button class="btn btn-danger" id="btnClear">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+    清空
+  </button>
+</div>
+<input type="file" id="importFile" accept=".json" style="display:none;">
+
+<!-- Settings Modal -->
+<div class="modal-mask" id="settingsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:6px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        分配比例设置
+      </div>
+      <button class="modal-close" data-close="settingsModal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <table class="alloc-table">
+        <thead>
+          <tr><th>收入来源</th><th>生存</th><th>悦己</th><th>快乐</th><th>储备</th><th>合计</th></tr>
+        </thead>
+        <tbody id="allocBody"></tbody>
+      </table>
+      <div class="note-box">
+        修改前三个比例时，第四个自动补全；若前三项之和超过 100，将自动调整最后修改的输入框。每行合计需为 100%。
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="btnResetAlloc">恢复默认</button>
+      <button class="btn btn-primary" id="btnSaveAlloc" style="margin:0;">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reassign Modal -->
+<div class="modal-mask" id="reassignModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📝 重新分配账户</div>
+      <button class="modal-close" data-close="reassignModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="reassign-info" id="reassignInfo"></div>
+      <div class="reassign-btns" id="reassignBtns"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-mask" id="confirmModal">
+  <div class="modal" style="border-radius:18px;max-width:340px;">
+    <div class="modal-header">
+      <div class="modal-title" id="confirmTitle">提示</div>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-text" id="confirmText"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="confirmCancel">取消</button>
+      <button class="btn btn-primary" id="confirmOk" style="margin:0;">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Match confirm Modal -->
+<div class="modal-mask" id="matchModal">
+  <div class="modal" style="border-radius:18px;max-width:360px;">
+    <div class="modal-header">
+      <div class="modal-title">🔍 账户匹配</div>
+      <button class="modal-close" data-close="matchModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-text" id="matchText"></div>
+      <div class="reassign-btns" id="matchBtns" style="margin-top:14px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ================== 基础配置 ================== */
+const STORAGE_KEY = 'fourMoneyData';
+
+/* SVG简笔画图标 */
+const ICONS = {
+  survival: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  improve: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+  social: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="12" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></svg>',
+  reserve: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+  empty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>'
+};
+
+const ACCOUNTS = [
+  { key:'survival', name:'生存底线', color:'#5b8def', icon:ICONS.survival, priority:1 },
+  { key:'improve',  name:'悦己提升', color:'#7eb8a0', icon:ICONS.improve, priority:2 },
+  { key:'social',   name:'快乐社交', color:'#e8a87c', icon:ICONS.social, priority:3 },
+  { key:'reserve',  name:'风险储备', color:'#9b8ad4', icon:ICONS.reserve, priority:4 }
+];
+const ACC_MAP = { survival:ACCOUNTS[0], improve:ACCOUNTS[1], social:ACCOUNTS[2], reserve:ACCOUNTS[3] };
+
+const INCOME_TYPES = ['父母生活费','学校补贴','助学金','勤工俭学','奖学金'];
+
+const DEFAULT_RULES = {
+  "父母生活费": { survival:100, improve:0,  social:0,  reserve:0  },
+  "学校补贴":   { survival:50,  improve:0,  social:0,  reserve:50 },
+  "助学金":     { survival:80,  improve:0,  social:0,  reserve:20 },
+  "勤工俭学":   { survival:0,   improve:30, social:20, reserve:50 },
+  "奖学金":     { survival:0,   improve:30, social:10, reserve:60 }
+};
+
+const EXPENSE_KEYWORDS = {
+  survival:['食堂','吃饭','米饭','面条','包子','面包','牛奶','公交','地铁','打印','论文','参考书','网费','卫生纸','纸巾','洗衣液','牙膏','洗发水','水乳','爽肤水','乳液','面霜','防晒霜','防晒','理发'],
+  improve:['羽毛球','游泳','健身房','跑鞋','精华','美容仪','烫发','染发','网课','考证','报名费','正版软件','外套','风衣','衬衫','基础款'],
+  social:['聚餐','火锅','烤肉','奶茶','咖啡','蛋糕','口红','眼影','腮红','彩妆','裙子','首饰','电影','密室','门票','外卖配送费','炸鸡','烧烤','打车'],
+  reserve:['急诊','看病','住院','维修手机','维修电脑','修手机','修电脑']
+};
+
+const INCOME_KEYWORDS = {
+  "父母生活费":['父母','生活费','家里','爸','妈','家里给'],
+  "学校补贴":['补贴','学校'],
+  "助学金":['助学金'],
+  "勤工俭学":['勤工俭学','勤工','兼职','打工','助研','助教','家教'],
+  "奖学金":['奖学金','获奖','国奖']
+};
+
+const INCOME_ACTION = ['发了','到账','收入','收到','进账','入账','打钱','打款','转账','汇款','入卡','给我'];
+const EXPENSE_ACTION = ['花了','花掉','消费','支出','开销','买了','付了','付','充了','充值','买','吃饭','吃','喝'];
+
+/* ================== 云端同步配置 ================== */
+// Cloudflare Pages Functions API（前后端同域名，无需配置 URL）
+// 部署到 Cloudflare Pages 后自动生效；本地开发可用 wrangler pages dev 测试
+const API_URL = '/api/data';
+let cloudReady = true;            // Cloudflare 方案默认启用云端同步
+const SAVE_DEBOUNCE_MS = 2000;    // 本地改动后防抖合并上传的间隔
+const MAX_RETRY = 6;              // 云端保存失败最大重试次数
+
+// 同步状态变量
+let isCloudSaving = false;        // 是否正在向云端写入
+let pendingCloudSave = false;     // 写入期间又来了新保存，标记需要再写一次
+let cloudRetryCount = 0;          // 当前重试计数
+let cloudRetryTimer = null;       // 重试定时器句柄
+let saveDebounceTimer = null;     // 防抖定时器句柄
+let lastSyncedAt = 0;             // 最后一次成功同步到云端的时间戳
+let localDirty = false;          // 本地是否存在未上传到云端的改动
+
+// 初始化（Cloudflare 方案无需额外初始化）
+function initCloud(){
+  console.log('云端同步已启用（Cloudflare Pages + D1）');
+}
+
+// 同步状态指示器更新
+function updateSyncStatus(status){
+  const el = document.getElementById('syncIndicator');
+  if(!el) return;
+  el.className = 'sync-indicator ' + status;
+  const texts = { pending:'未同步', syncing:'同步中', synced:'已同步', error:'同步失败', offline:'离线' };
+  const tips = {
+    pending: '点击立即同步',
+    syncing: '正在同步到云端…',
+    synced: lastSyncedAt ? ('云端已同步 '+new Date(lastSyncedAt).toLocaleTimeString('zh-CN')) : '云端已同步',
+    error: '同步失败，点击重试（数据已存本地，不会丢失）',
+    offline: '当前离线，数据已存本地，联网后自动同步'
+  };
+  el.querySelector('.sync-text').textContent = texts[status] || status;
+  el.title = tips[status] || '';
+}
+
+// 从云端加载数据（同时返回 updated_at 用于冲突判断）
+async function loadFromCloud(){
+  if(!cloudReady) return null;
+  try{
+    const res = await fetch(API_URL, { cache:'no-store' });
+    if(!res.ok) return null;
+    const result = await res.json();
+    if(!result.data) return null;
+    return {
+      data: JSON.parse(result.data),
+      updatedAt: result.updated_at ? new Date(result.updated_at).getTime() : 0
+    };
+  }catch(e){
+    console.log('云端加载失败', e);
+    return null;
+  }
+}
+
+// 保存数据到云端（带指数退避重试 + 防并发 + 状态指示）
+async function saveToCloud(){
+  if(!cloudReady) return;
+  if(!navigator.onLine){ updateSyncStatus('offline'); return; }
+  if(isCloudSaving){ pendingCloudSave = true; return; }   // 已有请求在飞，排队
+  isCloudSaving = true;
+  updateSyncStatus('syncing');
+  try{
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        json_data: JSON.stringify(DATA),
+        updated_at: new Date().toISOString()
+      })
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    cloudRetryCount = 0;
+    localDirty = false;
+    lastSyncedAt = Date.now();
+    updateSyncStatus('synced');
+  }catch(e){
+    console.log('云端保存失败', e);
+    cloudRetryCount++;
+    updateSyncStatus('error');
+    // 指数退避重试：1s、2s、4s、8s、16s、32s
+    if(cloudRetryTimer) clearTimeout(cloudRetryTimer);
+    if(cloudRetryCount <= MAX_RETRY){
+      const delay = Math.min(1000 * Math.pow(2, cloudRetryCount), 60000);
+      cloudRetryTimer = setTimeout(()=>{ cloudRetryTimer = null; saveToCloud(); }, delay);
+    }
+  }finally{
+    isCloudSaving = false;
+    if(pendingCloudSave){ pendingCloudSave = false; saveToCloud(); }  // 处理排队的请求
+  }
+}
+
+/* ================== 数据层 ================== */
+function getCurrentMonth(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function defaultData(){
+  return {
+    accounts:{ survival:0, improve:0, social:0, reserve:0 },
+    monthlyStats:{
+      month: getCurrentMonth(),
+      income:{ survival:0, improve:0, social:0, reserve:0 },
+      expense:{ survival:0, improve:0, social:0, reserve:0 }
+    },
+    history:[],
+    allocationRules: JSON.parse(JSON.stringify(DEFAULT_RULES)),
+    isCustom:false
+  };
+}
+let DATA = null;
+let isCloudLoading = false;
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      DATA = JSON.parse(raw);
+      if(!DATA.accounts) DATA.accounts = {survival:0,improve:0,social:0,reserve:0};
+      if(!DATA.monthlyStats) DATA.monthlyStats = defaultData().monthlyStats;
+      if(!DATA.history) DATA.history = [];
+      if(!DATA.allocationRules) DATA.allocationRules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+      if(typeof DATA.isCustom === 'undefined') DATA.isCustom = false;
+    } else {
+      DATA = defaultData();
+    }
+  }catch(e){
+    DATA = defaultData();
+  }
+  checkMonthlyReset();
+  // 仅落本地：校正字段后写回，不触发云端上传（避免启动时用旧本地覆盖云端最新）
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+}
+
+// 从云端加载数据并合并（带冲突保护：本地有未同步改动时优先保留本地）
+async function syncFromCloud(){
+  if(!cloudReady) return;
+  isCloudLoading = true;
+  updateSyncStatus('syncing');
+  const cloud = await loadFromCloud();
+  if(cloud){
+    // 冲突保护：本地有未上传的改动时，优先保留本地并主动推送，避免被云端旧数据覆盖丢失
+    if(localDirty && lastSyncedAt > 0){
+      console.log('本地有未同步改动，保留本地数据并上传');
+      isCloudLoading = false;
+      saveToCloud();
+      return;
+    }
+    DATA = cloud.data;
+    if(!DATA.accounts) DATA.accounts = {survival:0,improve:0,social:0,reserve:0};
+    if(!DATA.monthlyStats) DATA.monthlyStats = defaultData().monthlyStats;
+    if(!DATA.history) DATA.history = [];
+    if(!DATA.allocationRules) DATA.allocationRules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+    if(typeof DATA.isCustom === 'undefined') DATA.isCustom = false;
+    checkMonthlyReset();
+    lastSyncedAt = cloud.updatedAt || Date.now();
+    localDirty = false;
+    saveData();           // 落本地（isCloudLoading 期间不会回写云端）
+    renderAll();
+    updateSyncStatus('synced');
+  } else {
+    updateSyncStatus(navigator.onLine ? 'error' : 'offline');
+  }
+  isCloudLoading = false;
+}
+
+// 保存数据：先立即落本地（永不丢），再防抖合并上传云端
+function saveData(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+  if(isCloudLoading) return;     // 正在从云端拉取，只落本地，不回写
+  if(!cloudReady) return;
+  localDirty = true;
+  updateSyncStatus('pending');
+  // 防抖：短时间内多次保存合并为一次云端请求，避免国内访问慢时请求堆积
+  if(saveDebounceTimer) clearTimeout(saveDebounceTimer);
+  saveDebounceTimer = setTimeout(()=>{
+    saveDebounceTimer = null;
+    saveToCloud();
+  }, SAVE_DEBOUNCE_MS);
+}
+function checkMonthlyReset(){
+  const m = getCurrentMonth();
+  if(DATA.monthlyStats.month !== m){
+    DATA.monthlyStats = {
+      month: m,
+      income:{survival:0,improve:0,social:0,reserve:0},
+      expense:{survival:0,improve:0,social:0,reserve:0}
+    };
+  }
+}
+
+/* ================== 工具函数 ================== */
+function fmt(n){
+  const num = Number(n)||0;
+  return num.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function fmtTime(ts){
+  const d = new Date(ts);
+  const now = new Date();
+  const pad = n=>String(n).padStart(2,'0');
+  const sameDay = d.toDateString()===now.toDateString();
+  const yest = new Date(now); yest.setDate(now.getDate()-1);
+  const isYest = d.toDateString()===yest.toDateString();
+  if(sameDay) return '今天 '+pad(d.getHours())+':'+pad(d.getMinutes());
+  if(isYest) return '昨天 '+pad(d.getHours())+':'+pad(d.getMinutes());
+  return (d.getMonth()+1)+'/'+d.getDate()+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+
+function showToast(msg, type){
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast '+(type||'');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(), 2000);
+}
+
+function showConfirm(text, title, okText){
+  return new Promise(resolve=>{
+    document.getElementById('confirmTitle').textContent = title||'提示';
+    document.getElementById('confirmText').innerHTML = text;
+    document.getElementById('confirmOk').textContent = okText||'确定';
+    document.getElementById('confirmModal').classList.add('show');
+    const ok = document.getElementById('confirmOk');
+    const cancel = document.getElementById('confirmCancel');
+    const cleanup = ()=>{
+      ok.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+      document.getElementById('confirmModal').classList.remove('show');
+    };
+    const onOk = ()=>{cleanup();resolve(true);};
+    const onCancel = ()=>{cleanup();resolve(false);};
+    ok.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+  });
+}
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+/* ================== 中文数字转换 ================== */
+function chineseToNumber(str){
+  const digits = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'两':2,'零':0};
+  const units = {'十':10,'百':100,'千':1000,'万':10000,'亿':100000000};
+  let result = 0, section = 0, temp = 0;
+  let hasWan = false, seenUnitAfterWan = false;
+  for(let i=0;i<str.length;i++){
+    const ch = str[i];
+    if(digits[ch]!==undefined){
+      temp = digits[ch];
+    } else if(units[ch]!==undefined){
+      const unit = units[ch];
+      if(unit>=10000){
+        // 万/亿：段结束。处理"十万"(section有值,temp=0)与"一万"(temp=1)两种情况
+        if(temp>0){
+          section = (section+temp)*unit;
+        } else if(section>0){
+          section = section*unit;
+        } else {
+          section = unit;
+        }
+        result += section;
+        section = 0; temp = 0;
+        hasWan = true; seenUnitAfterWan = false;
+      } else {
+        if(temp===0) temp = 1; // 处理"十二"/"十万"中的十
+        section += temp*unit;
+        temp = 0;
+        if(hasWan) seenUnitAfterWan = true;
+      }
+    } else {
+      break;
+    }
+  }
+  // 口语化"一万二"=12000：万后单个数字无单位按千处理
+  if(hasWan && temp>0 && temp<10 && !seenUnitAfterWan && section===0){
+    return result + temp*1000;
+  }
+  return result + section + temp;
+}
+function isCnNumChar(ch){
+  return '零一二三四五六七八九两十百千万亿'.indexOf(ch) >= 0;
+}
+function extractAmount(text){
+  // 优先匹配阿拉伯数字（含"80块""5000元""5000"）
+  const arabicMatch = text.match(/(\d+(?:\.\d+)?)/);
+  if(arabicMatch){
+    return parseFloat(arabicMatch[1]);
+  }
+  // 中文数字：找最长连续中文数字串
+  const cnRegex = /[零一二三四五六七八九两百十千万亿]+/g;
+  let best = '', m;
+  while((m = cnRegex.exec(text)) !== null){
+    if(m[0].length > best.length) best = m[0];
+  }
+  if(best){
+    const n = chineseToNumber(best);
+    if(n>0) return n;
+  }
+  return 0;
+}
+
+/* ================== 智能识别 ================== */
+function detectIncomeType(text){
+  let best = null, bestLen = 0;
+  for(const type in INCOME_KEYWORDS){
+    for(const kw of INCOME_KEYWORDS[type]){
+      if(text.includes(kw) && kw.length > bestLen){
+        best = type; bestLen = kw.length;
+      }
+    }
+  }
+  return best;
+}
+function matchExpenseAccount(text){
+  // 返回匹配的账户数组，按优先级排序（survival>improve>social>reserve）
+  const matched = [];
+  const order = ['survival','improve','social','reserve'];
+  for(const acc of order){
+    for(const kw of EXPENSE_KEYWORDS[acc]){
+      if(text.includes(kw)){
+        if(!matched.includes(acc)) matched.push(acc);
+        break;
+      }
+    }
+  }
+  return matched;
+}
+function detectIntent(text){
+  let incomeScore = 0, expenseScore = 0;
+  for(const w of INCOME_ACTION){ if(text.includes(w)) incomeScore += 2; }
+  for(const w of EXPENSE_ACTION){ if(text.includes(w)) expenseScore += 2; }
+  if(detectIncomeType(text)) incomeScore += 3;
+  if(matchExpenseAccount(text).length>0) expenseScore += 2;
+  if(incomeScore > expenseScore) return 'income';
+  if(expenseScore > incomeScore) return 'expense';
+  return 'unknown';
+}
+
+// 纠错指令解析
+const CORRECT_ACTION = ['改成','改为','移到','移至','放到','放至','调整到','调整至','归到','归入','归入到','转入','划到','划至'];
+function parseTargetAccount(text){
+  // 模糊匹配
+  if(/生存|底线|第[一1]/.test(text)) return 'survival';
+  if(/悦己|提升|第[二2]/.test(text)) return 'improve';
+  if(/快乐|社交|第[三3]/.test(text)) return 'social';
+  if(/风险|储备|第[四4]/.test(text)) return 'reserve';
+  return null;
+}
+function findTargetTransaction(text){
+  // 返回 history 中的目标交易
+  const hist = DATA.history;
+  if(hist.length===0) return null;
+  // 1. 金额定位："80块的" / "80元的" / "80"
+  const amt = extractAmount(text);
+  // 2. 备注关键词：去掉数字和动作词，提取名词片段
+  // 简单方案：遍历所有支出，看remark是否包含text中的某些关键词
+  // 3. 时间指示
+  const isLatest = /刚才|上一笔|刚刚|最近|上一|上一笔|最后/.test(text);
+  const isYesterday = /昨天|昨日/.test(text);
+  const isToday = /今天/.test(text);
+
+  // 优先：金额匹配（取最近的）
+  if(amt > 0){
+    let candidates = hist.filter(h=>Math.abs(h.amount-amt)<0.001);
+    if(isYesterday){
+      const y = new Date(); y.setHours(0,0,0,0); y.setDate(y.getDate()-1);
+      const t = new Date(); t.setHours(23,59,59,999); t.setDate(t.getDate()-1);
+      const c2 = candidates.filter(h=>h.timestamp>=y.getTime() && h.timestamp<=t.getTime());
+      if(c2.length) return c2[c2.length-1];
+    }
+    if(candidates.length) return candidates[candidates.length-1];
+  }
+
+  // 关键词匹配 remark
+  // 移除动作词、目标账户词、数字、时间词后剩下的有意义词
+  let cleaned = text;
+  CORRECT_ACTION.forEach(w=>cleaned = cleaned.split(w)[0] || cleaned);
+  cleaned = cleaned.replace(/生存底线|悦己提升|快乐社交|风险储备|生存|悦己|快乐|储备|风险|底线|提升|社交|第[一二三四1234]/g,'');
+  cleaned = cleaned.replace(/[0-9零一二三四五六七八九十百千万两块元\\.]/g,' ');
+  cleaned = cleaned.replace(/刚才|上一笔|刚刚|最近|昨天|昨日|今天|那笔|那个|这笔|个的|的/g,' ');
+  const words = cleaned.split(/[\s,，。、!?！？]+/).filter(w=>w.length>=2);
+  if(words.length){
+    for(let i=hist.length-1;i>=0;i--){
+      const h = hist[i];
+      if(h.remark){
+        for(const w of words){
+          if(h.remark.includes(w)) return h;
+        }
+      }
+    }
+  }
+
+  // 时间指示
+  if(isYesterday){
+    const y = new Date(); y.setHours(0,0,0,0); y.setDate(y.getDate()-1);
+    const t = new Date(); t.setHours(23,59,59,999); t.setDate(t.getDate()-1);
+    for(let i=hist.length-1;i>=0;i--){
+      if(hist[i].timestamp>=y.getTime() && hist[i].timestamp<=t.getTime()) return hist[i];
+    }
+  }
+  // 默认：最近一笔（优先支出）
+  for(let i=hist.length-1;i>=0;i--){
+    if(hist[i].type==='expense') return hist[i];
+  }
+  return hist[hist.length-1];
+}
+
+async function handleCorrectionCommand(text){
+  const target = parseTargetAccount(text);
+  if(!target){
+    showToast('未识别目标账户，请指明生存/悦己/快乐/储备','error');
+    return;
+  }
+  const tx = findTargetTransaction(text);
+  if(!tx){
+    showToast('未找到要调整的交易','error');
+    return;
+  }
+  if(tx.account === target){
+    showToast('该笔已在【'+ACC_MAP[target].name+'】中');
+    return;
+  }
+  reassignTransaction(tx.id, target, true);
+}
+
+/* ================== 收入与支出 ================== */
+function addIncome(incomeType, amount, remark){
+  if(!amount || amount<=0){ showToast('金额无效','error'); return false; }
+  const rule = DATA.allocationRules[incomeType] || DEFAULT_RULES[incomeType];
+  if(!rule){ showToast('未知收入类型','error'); return false; }
+  const ts = Date.now();
+  const baseRemark = remark || (incomeType+'到账');
+  let addedAny = false;
+  for(const acc of ACCOUNTS){
+    const pct = rule[acc.key]||0;
+    if(pct<=0) continue;
+    const part = +(amount * pct / 100).toFixed(2);
+    if(part<=0) continue;
+    DATA.accounts[acc.key] = +(DATA.accounts[acc.key] + part).toFixed(2);
+    DATA.monthlyStats.income[acc.key] = +(DATA.monthlyStats.income[acc.key] + part).toFixed(2);
+    DATA.history.push({
+      id: genId(), type:'income', amount:part, account:acc.key,
+      incomeType: incomeType, remark: baseRemark, timestamp: ts
+    });
+    addedAny = true;
+  }
+  if(!addedAny){
+    // 规则全0，全部进生存
+    DATA.accounts.survival = +(DATA.accounts.survival + amount).toFixed(2);
+    DATA.monthlyStats.income.survival = +(DATA.monthlyStats.income.survival + amount).toFixed(2);
+    DATA.history.push({id:genId(),type:'income',amount:amount,account:'survival',incomeType,remark:baseRemark,timestamp:ts});
+  }
+  saveData();
+  renderAll();
+  showToast('✅ 已记录 '+incomeType+' 收入 ¥'+fmt(amount));
+  return true;
+}
+
+async function addExpense(account, amount, remark, forceAccount){
+  if(!amount || amount<=0){ showToast('金额无效','error'); return false; }
+  const acc = ACC_MAP[account];
+  if(!acc){ showToast('账户无效','error'); return false; }
+  // 余额检查
+  if(DATA.accounts[account] < amount && !forceAccount){
+    const allowed = await handleInsufficientBalance(account, amount);
+    if(!allowed) return false;
+    // handleInsufficientBalance 内部已处理挪用逻辑
+  }
+  DATA.accounts[account] = +(DATA.accounts[account] - amount).toFixed(2);
+  DATA.monthlyStats.expense[account] = +(DATA.monthlyStats.expense[account] + amount).toFixed(2);
+  DATA.history.push({
+    id: genId(), type:'expense', amount:amount, account:account,
+    remark: remark||acc.name, timestamp: Date.now()
+  });
+  saveData();
+  renderAll();
+  return true;
+}
+
+async function handleInsufficientBalance(account, amount){
+  // 规则：生存不可挪用；悦己可从快乐挪；快乐不可从储备挪；储备严禁挪用需额外警告
+  const need = +(amount - DATA.accounts[account]).toFixed(2);
+  if(account==='survival'){
+    const ok = await showConfirm('「生存底线」余额不足（差 ¥'+fmt(need)+'）。生存底线不可挪用其他账户，是否仍要记录？余额将为负。','余额不足','仍要记录');
+    return ok;
+  }
+  if(account==='improve'){
+    const ok = await showConfirm('「悦己提升」余额不足（差 ¥'+fmt(need)+'）。是否从「快乐社交」挪用补足？','余额不足','从快乐挪用');
+    if(!ok) return false;
+    if(DATA.accounts.social >= need){
+      DATA.accounts.social = +(DATA.accounts.social - need).toFixed(2);
+      DATA.accounts.improve = +(DATA.accounts.improve + need).toFixed(2);
+      showToast('✅ 已从快乐社交挪用 ¥'+fmt(need)+' 至悦己提升','success');
+      return true;
+    } else {
+      // 快乐也不够，把快乐全部挪过来，剩余允许负数
+      const moved = DATA.accounts.social;
+      DATA.accounts.social = 0;
+      DATA.accounts.improve = +(DATA.accounts.improve + moved).toFixed(2);
+      showToast('⚠️ 快乐社交余额仅 ¥'+fmt(moved)+'，已全部挪用，悦己提升仍可能为负','warning');
+      return true;
+    }
+  }
+  if(account==='social'){
+    const ok = await showConfirm('「快乐社交」余额不足（差 ¥'+fmt(need)+'）。快乐社交不可挪用风险储备，是否仍要记录？余额将为负。','余额不足','仍要记录');
+    return ok;
+  }
+  if(account==='reserve'){
+    const ok = await showConfirm('<span class="danger">⚠️ 风险储备严禁挪用！</span><br>「风险储备」余额不足（差 ¥'+fmt(need)+'）。这是应对极端情况的最后防线，是否仍要记录？余额将为负。','风险警告','仍要记录');
+    return ok;
+  }
+  return true;
+}
+
+function reassignTransaction(id, newAccount, fromCommand){
+  const tx = DATA.history.find(h=>h.id===id);
+  if(!tx){ showToast('未找到该交易','error'); return; }
+  if(tx.account === newAccount){
+    showToast('该笔已在【'+ACC_MAP[newAccount].name+'】中');
+    return;
+  }
+  const oldAcc = tx.account;
+  if(tx.type==='expense'){
+    DATA.accounts[oldAcc] = +(DATA.accounts[oldAcc] + tx.amount).toFixed(2);
+    DATA.accounts[newAccount] = +(DATA.accounts[newAccount] - tx.amount).toFixed(2);
+    DATA.monthlyStats.expense[oldAcc] = +(DATA.monthlyStats.expense[oldAcc] - tx.amount).toFixed(2);
+    DATA.monthlyStats.expense[newAccount] = +(DATA.monthlyStats.expense[newAccount] + tx.amount).toFixed(2);
+  } else {
+    DATA.accounts[oldAcc] = +(DATA.accounts[oldAcc] - tx.amount).toFixed(2);
+    DATA.accounts[newAccount] = +(DATA.accounts[newAccount] + tx.amount).toFixed(2);
+    DATA.monthlyStats.income[oldAcc] = +(DATA.monthlyStats.income[oldAcc] - tx.amount).toFixed(2);
+    DATA.monthlyStats.income[newAccount] = +(DATA.monthlyStats.income[newAccount] + tx.amount).toFixed(2);
+  }
+  tx.account = newAccount;
+  saveData();
+  renderAll();
+  showToast('✅ 已将该笔'+(tx.type==='expense'?'支出':'收入')+'移至【'+ACC_MAP[newAccount].name+'】','success');
+}
+
+/* ================== 智能输入主流程 ================== */
+async function handleSmartInput(){
+  const text = document.getElementById('smartInput').value.trim();
+  if(!text){ showToast('请输入内容','error'); return; }
+  // 1. 纠错指令优先
+  const hasCorrectAction = CORRECT_ACTION.some(w=>text.includes(w));
+  const hasTarget = parseTargetAccount(text);
+  if(hasCorrectAction && hasTarget){
+    await handleCorrectionCommand(text);
+    document.getElementById('smartInput').value='';
+    return;
+  }
+  // 2. 识别意图
+  const intent = detectIntent(text);
+  const amount = extractAmount(text);
+  if(amount<=0){
+    showToast('未识别到金额，请包含数字（如5000或五千）','error');
+    return;
+  }
+  if(intent==='income' || (intent==='unknown' && detectIncomeType(text))){
+    const incomeType = detectIncomeType(text) || '父母生活费';
+    addIncome(incomeType, amount, incomeType+'到账');
+    document.getElementById('smartInput').value='';
+    return;
+  }
+  // 默认支出
+  const matched = matchExpenseAccount(text);
+  if(matched.length===0){
+    showToast('未匹配到支出账户，请使用手动录入','error');
+    return;
+  }
+  // 多账户匹配取最高优先级
+  const targetAcc = matched[0];
+  // 生成备注：去除金额数字、关键词
+  let remark = text;
+  // 去除阿拉伯数字和"块/元/花了/买"等
+  remark = remark.replace(/\d+(\.\d+)?\s*(块|元)?/g,'');
+  remark = remark.replace(/[零一二三四五六七八九十百千万两]+/g,'');
+  remark = remark.replace(/花了|花掉|消费|支出|买了|付了|买|付|充了|充值|吃饭|块|元/g,'');
+  remark = remark.replace(/[,，。、!?！？\s]+/g,' ').trim();
+  if(!remark) remark = ACC_MAP[targetAcc].name;
+
+  // 匹配确认弹窗
+  await showMatchConfirm(targetAcc, amount, remark, matched);
+}
+
+function showMatchConfirm(defaultAcc, amount, remark, matchedList){
+  return new Promise(resolve=>{
+    document.getElementById('matchText').innerHTML = '系统匹配至：<b style="color:'+ACC_MAP[defaultAcc].color+'"><span style="display:inline-block;vertical-align:-3px;margin-right:4px;width:16px;height:16px;">'+ACC_MAP[defaultAcc].icon+'</span>'+ACC_MAP[defaultAcc].name+'</b><br>金额：¥'+fmt(amount)+'，备注：'+remark+'<br><span class="muted">可确认或改为其他账户</span>';
+    const btns = document.getElementById('matchBtns');
+    btns.innerHTML = '';
+    const order = ['survival','improve','social','reserve'];
+    // 先放确认按钮
+    order.forEach(key=>{
+      const acc = ACC_MAP[key];
+      const b = document.createElement('button');
+      b.className = 'reassign-btn'+(key===defaultAcc?' current':'');
+      b.innerHTML = '<span class="emo">'+acc.icon+'</span><span>'+acc.name+'</span>'+(key===defaultAcc?'<span class="muted" style="font-size:10px;">(匹配)</span>':'');
+      b.style.color = key===defaultAcc ? acc.color : 'var(--text)';
+      b.style.borderColor = key===defaultAcc ? acc.color : 'var(--border)';
+      b.onclick = async ()=>{
+        closeModal('matchModal');
+        const ok = await addExpense(key, amount, remark);
+        if(ok){
+          showToast('✅ 已记录支出 ¥'+fmt(amount)+' → '+acc.name,'success');
+          document.getElementById('smartInput').value='';
+        }
+        resolve();
+      };
+      btns.appendChild(b);
+    });
+    // 取消
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'reassign-btn';
+    cancelBtn.style.gridColumn = '1 / span 2';
+    cancelBtn.innerHTML = '<span class="emo">✕</span><span>取消</span>';
+    cancelBtn.onclick = ()=>{ closeModal('matchModal'); resolve(); };
+    btns.appendChild(cancelBtn);
+    openModal('matchModal');
+  });
+}
+
+/* ================== 渲染 ================== */
+function renderAll(){
+  renderTotal();
+  renderAccounts();
+  renderHistory();
+  renderScheme();
+}
+function renderTotal(){
+  const sum = DATA.accounts.survival + DATA.accounts.improve + DATA.accounts.social + DATA.accounts.reserve;
+  document.getElementById('totalBalance').textContent = fmt(sum);
+}
+function renderScheme(){
+  const tag = document.getElementById('schemeTag');
+  tag.textContent = '方案：'+(DATA.isCustom ? '自定义' : '默认经典');
+}
+function renderAccounts(){
+  const grid = document.getElementById('accountsGrid');
+  grid.innerHTML = '';
+  for(const acc of ACCOUNTS){
+    const balance = DATA.accounts[acc.key];
+    const income = DATA.monthlyStats.income[acc.key];
+    const expense = DATA.monthlyStats.expense[acc.key];
+    let pct = 0, barColor = acc.color;
+    if(income > 0){
+      pct = Math.min(expense/income*100, 100);
+      if(expense/income >= 1) barColor = '#dc2626';
+      else if(expense/income >= 0.9) barColor = '#d48806';
+    } else if(expense > 0){
+      pct = 100; barColor = '#dc2626';
+    }
+    const card = document.createElement('div');
+    card.className = 'acc-card';
+    card.style.setProperty('--acc-color', acc.color);
+    card.innerHTML = `
+      <div class="acc-head">
+        <span class="acc-icon" style="color:${acc.color}">${acc.icon}</span>
+        <span class="acc-name">${acc.name}</span>
+      </div>
+      <div class="acc-balance"><span class="yuan">¥</span>${fmt(balance)}</div>
+      <div class="acc-stats">
+        <span>入 <b>${fmt(income)}</b></span>
+        <span>出 <b>${fmt(expense)}</b></span>
+      </div>
+      <div class="progress"><div class="progress-bar" style="width:${pct}%;background:${barColor};"></div></div>
+    `;
+    grid.appendChild(card);
+  }
+}
+function renderHistory(){
+  const list = document.getElementById('historyList');
+  const hist = DATA.history.slice().reverse().slice(0,50);
+  if(hist.length===0){
+    list.innerHTML = '<div class="empty-state"><div class="icon" style="color:#a8acbf;">'+ICONS.empty+'</div>暂无记录<br>快开始你的第一笔记账吧</div>';
+    return;
+  }
+  list.innerHTML = '';
+  for(const h of hist){
+    const acc = ACC_MAP[h.account];
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const isIncome = h.type==='income';
+    item.innerHTML = `
+      <div class="hist-icon" style="color:${acc.color};">${isIncome?ICONS.money:acc.icon}</div>
+      <div class="hist-body">
+        <div class="hist-remark">${h.remark||acc.name}</div>
+        <div class="hist-meta">
+          <span class="hist-tag" style="background:${acc.color};">${acc.name}</span>
+          <span>${fmtTime(h.timestamp)}</span>
+          ${isIncome && h.incomeType ? '<span>· '+h.incomeType+'</span>':''}
+        </div>
+      </div>
+      <div class="hist-amount ${isIncome?'income':'expense'}">${isIncome?'+':'-'}¥${fmt(h.amount)}</div>
+      <button class="hist-edit" data-id="${h.id}" title="重新分配" style="color:var(--text-muted);">${ICONS.edit}</button>
+    `;
+    list.appendChild(item);
+  }
+  list.querySelectorAll('.hist-edit').forEach(btn=>{
+    btn.addEventListener('click', ()=>openReassign(btn.dataset.id));
+  });
+}
+
+/* ================== 重新分配 ================== */
+let reassignTargetId = null;
+function openReassign(id){
+  const tx = DATA.history.find(h=>h.id===id);
+  if(!tx) return;
+  reassignTargetId = id;
+  const acc = ACC_MAP[tx.account];
+  document.getElementById('reassignInfo').innerHTML = `
+    <div>类型：<b>${tx.type==='income'?'收入':'支出'}</b></div>
+    <div>金额：<b>¥${fmt(tx.amount)}</b></div>
+    <div>备注：${tx.remark||'—'}</div>
+    <div>当前账户：<b style="color:${acc.color}"><span style="display:inline-block;vertical-align:-3px;margin-right:4px;width:16px;height:16px;">${acc.icon}</span>${acc.name}</b></div>
+    <div class="muted" style="margin-top:6px;">选择新的账户：</div>
+  `;
+  const btns = document.getElementById('reassignBtns');
+  btns.innerHTML = '';
+  const order = ['survival','improve','social','reserve'];
+  order.forEach(key=>{
+    const a = ACC_MAP[key];
+    const b = document.createElement('button');
+    b.className = 'reassign-btn'+(key===tx.account?' current':'');
+    b.innerHTML = '<span class="emo">'+a.icon+'</span><span>'+a.name+'</span>';
+    b.style.color = key===tx.account ? a.color : 'var(--text)';
+    b.style.borderColor = key===tx.account ? a.color : 'var(--border)';
+    b.onclick = ()=>{
+      reassignTransaction(id, key);
+      closeModal('reassignModal');
+    };
+    btns.appendChild(b);
+  });
+  openModal('reassignModal');
+}
+
+/* ================== 设置（分配比例） ================== */
+let lastEdited = {}; // {incomeType: fieldIndex}
+function renderAllocTable(){
+  const body = document.getElementById('allocBody');
+  body.innerHTML = '';
+  for(const type of INCOME_TYPES){
+    const rule = DATA.allocationRules[type] || DEFAULT_RULES[type];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${type}</td>
+      <td><input type="number" class="alloc-input" min="0" max="100" data-type="${type}" data-idx="0" value="${rule.survival}"></td>
+      <td><input type="number" class="alloc-input" min="0" max="100" data-type="${type}" data-idx="1" value="${rule.improve}"></td>
+      <td><input type="number" class="alloc-input" min="0" max="100" data-type="${type}" data-idx="2" value="${rule.social}"></td>
+      <td><input type="number" class="alloc-input" min="0" max="100" data-type="${type}" data-idx="3" value="${rule.reserve}"></td>
+      <td><span class="row-sum" data-type="${type}">100</span></td>
+    `;
+    body.appendChild(tr);
+  }
+  // 绑定输入
+  body.querySelectorAll('.alloc-input').forEach(inp=>{
+    inp.addEventListener('input', onAllocInput);
+    inp.addEventListener('focus', ()=>{
+      lastEdited[inp.dataset.type] = parseInt(inp.dataset.idx);
+    });
+  });
+  updateAllRowSums();
+}
+function onAllocInput(e){
+  const inp = e.target;
+  const type = inp.dataset.type;
+  const idx = parseInt(inp.dataset.idx);
+  lastEdited[type] = idx;
+  const row = inp.closest('tr');
+  const inputs = row.querySelectorAll('.alloc-input');
+  let v = parseInt(inp.value);
+  if(isNaN(v)||v<0) v = 0;
+  if(v>100) v = 100;
+  inp.value = v;
+
+  if(idx < 3){
+    // 修改前三个，第四个自动补全
+    let sum3 = parseInt(inputs[0].value||0)+parseInt(inputs[1].value||0)+parseInt(inputs[2].value||0);
+    if(sum3 > 100){
+      // 调整最后修改的输入框
+      const other = [0,1,2].filter(i=>i!==idx);
+      const otherSum = parseInt(inputs[other[0]].value||0)+parseInt(inputs[other[1]].value||0);
+      const max = Math.max(0, 100 - otherSum);
+      inputs[idx].value = max;
+      sum3 = otherSum + max;
+      inputs[3].value = 0;
+    } else {
+      inputs[3].value = 100 - sum3;
+    }
+  } else {
+    // 修改第四个，校验总和
+    let sum = 0;
+    for(let i=0;i<4;i++) sum += parseInt(inputs[i].value||0);
+    if(sum !== 100){
+      // 不强制，仅标记
+    }
+  }
+  updateRowSum(row, type);
+}
+function updateRowSum(row, type){
+  const inputs = row.querySelectorAll('.alloc-input');
+  let sum = 0;
+  for(let i=0;i<4;i++) sum += parseInt(inputs[i].value||0);
+  const span = row.querySelector('.row-sum');
+  span.textContent = sum;
+  span.className = 'row-sum '+(sum===100?'ok':'bad');
+}
+function updateAllRowSums(){
+  document.querySelectorAll('#allocBody tr').forEach(tr=>{
+    const type = tr.querySelector('.row-sum').dataset.type;
+    updateRowSum(tr, type);
+  });
+}
+function openSettings(){
+  renderAllocTable();
+  openModal('settingsModal');
+}
+function saveAlloc(){
+  const rows = document.querySelectorAll('#allocBody tr');
+  const newRules = {};
+  let allOk = true;
+  rows.forEach(tr=>{
+    const inputs = tr.querySelectorAll('.alloc-input');
+    const type = inputs[0].dataset.type;
+    const vals = [parseInt(inputs[0].value||0),parseInt(inputs[1].value||0),parseInt(inputs[2].value||0),parseInt(inputs[3].value||0)];
+    const sum = vals.reduce((a,b)=>a+b,0);
+    if(sum!==100) allOk = false;
+    newRules[type] = { survival:vals[0], improve:vals[1], social:vals[2], reserve:vals[3] };
+  });
+  if(!allOk){
+    showToast('每行合计必须为 100%','error');
+    return;
+  }
+  // 判断是否与默认相同
+  let isDefault = true;
+  for(const t of INCOME_TYPES){
+    const d = DEFAULT_RULES[t], n = newRules[t];
+    if(d.survival!==n.survival||d.improve!==n.improve||d.social!==n.social||d.reserve!==n.reserve){
+      isDefault = false; break;
+    }
+  }
+  DATA.allocationRules = newRules;
+  DATA.isCustom = !isDefault;
+  saveData();
+  renderScheme();
+  closeModal('settingsModal');
+  showToast('✅ 分配比例已保存','success');
+}
+function resetAlloc(){
+  renderAllocTable();
+  // 用默认值重新填充
+  const body = document.getElementById('allocBody');
+  INCOME_TYPES.forEach((type,i)=>{
+    const tr = body.querySelectorAll('tr')[i];
+    const inputs = tr.querySelectorAll('.alloc-input');
+    const d = DEFAULT_RULES[type];
+    inputs[0].value = d.survival;
+    inputs[1].value = d.improve;
+    inputs[2].value = d.social;
+    inputs[3].value = d.reserve;
+    updateRowSum(tr, type);
+  });
+  showToast('已恢复默认比例（需点击保存生效）','warning');
+}
+
+/* ================== 导入导出/清空 ================== */
+function exportData(){
+  const blob = new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '四笔钱记账数据_'+getCurrentMonth()+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ 已导出数据','success');
+}
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = async e=>{
+    try{
+      const obj = JSON.parse(e.target.result);
+      if(!obj.accounts || !obj.history){
+        showToast('文件格式不正确','error');
+        return;
+      }
+      const ok = await showConfirm('导入将覆盖当前所有数据，是否继续？','确认导入','覆盖');
+      if(!ok) return;
+      DATA = Object.assign(defaultData(), obj);
+      if(!DATA.monthlyStats) DATA.monthlyStats = defaultData().monthlyStats;
+      checkMonthlyReset();
+      saveData();
+      renderAll();
+      showToast('✅ 数据导入成功','success');
+    }catch(err){
+      showToast('导入失败：'+err.message,'error');
+    }
+  };
+  reader.readAsText(file);
+}
+async function clearAllData(){
+  const ok1 = await showConfirm('确定要清空所有数据吗？此操作不可恢复！','清空确认','确定清空');
+  if(!ok1) return;
+  const ok2 = await showConfirm('<span class="danger">⚠️ 再次确认：所有账户余额、历史记录、自定义规则都将被永久删除！</span>','二次确认','永久删除');
+  if(!ok2) return;
+  DATA = defaultData();
+  saveData();
+  renderAll();
+  showToast('已清空所有数据','warning');
+}
+
+/* ================== 事件绑定 ================== */
+function bindEvents(){
+  document.getElementById('btnSettings').addEventListener('click', openSettings);
+  document.querySelectorAll('[data-close]').forEach(el=>{
+    el.addEventListener('click', ()=>closeModal(el.dataset.close));
+  });
+  // 点击遮罩关闭
+  document.querySelectorAll('.modal-mask').forEach(m=>{
+    m.addEventListener('click', e=>{
+      if(e.target === m) m.classList.remove('show');
+    });
+  });
+  document.getElementById('btnSmart').addEventListener('click', handleSmartInput);
+  document.getElementById('smartInput').addEventListener('keydown', e=>{
+    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); handleSmartInput(); }
+  });
+  // 手动录入 tab
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      const tab = t.dataset.tab;
+      document.getElementById('manualIncome').style.display = tab==='income'?'block':'none';
+      document.getElementById('manualExpense').style.display = tab==='expense'?'block':'none';
+    });
+  });
+  document.getElementById('btnManualIncome').addEventListener('click', ()=>{
+    const type = document.getElementById('manualIncomeType').value;
+    const amt = parseFloat(document.getElementById('manualIncomeAmount').value);
+    if(!amt||amt<=0){ showToast('请输入有效金额','error'); return; }
+    if(addIncome(type, amt, type+'到账')){
+      document.getElementById('manualIncomeAmount').value='';
+    }
+  });
+  document.getElementById('btnManualExpense').addEventListener('click', async ()=>{
+    const acc = document.getElementById('manualExpenseAccount').value;
+    const amt = parseFloat(document.getElementById('manualExpenseAmount').value);
+    const remark = document.getElementById('manualExpenseRemark').value.trim();
+    if(!amt||amt<=0){ showToast('请输入有效金额','error'); return; }
+    const ok = await addExpense(acc, amt, remark);
+    if(ok){
+      document.getElementById('manualExpenseAmount').value='';
+      document.getElementById('manualExpenseRemark').value='';
+      showToast('✅ 已记录支出 ¥'+fmt(amt)+' → '+ACC_MAP[acc].name,'success');
+    }
+  });
+  document.getElementById('btnSaveAlloc').addEventListener('click', saveAlloc);
+  document.getElementById('btnResetAlloc').addEventListener('click', resetAlloc);
+  document.getElementById('btnExport').addEventListener('click', exportData);
+  document.getElementById('btnImport').addEventListener('click', ()=>{
+    document.getElementById('importFile').click();
+  });
+  document.getElementById('importFile').addEventListener('change', e=>{
+    if(e.target.files[0]) importData(e.target.files[0]);
+    e.target.value='';
+  });
+  document.getElementById('btnClear').addEventListener('click', clearAllData);
+  // 同步指示器：点击手动同步
+  document.getElementById('syncIndicator').addEventListener('click', ()=>{
+    if(!navigator.onLine){ showToast('当前离线，数据已存本地','warning'); return; }
+    if(localDirty){
+      // 有未同步改动，立即上传（取消防抖，立即执行）
+      if(saveDebounceTimer){ clearTimeout(saveDebounceTimer); saveDebounceTimer = null; }
+      cloudRetryCount = 0;
+      saveToCloud();
+      showToast('正在上传到云端…','success');
+    } else {
+      syncFromCloud();
+      showToast('正在拉取云端最新数据…','success');
+    }
+  });
+}
+
+/* ================== 初始化 ================== */
+initCloud();
+loadData();
+bindEvents();
+renderAll();
+updateSyncStatus(navigator.onLine ? 'pending' : 'offline');
+
+// 启动时从云端拉取最新数据（失败也不影响本地使用，静默重试）
+syncFromCloud().catch(e=>console.log('启动同步失败', e));
+
+// 网络恢复时自动同步：有未上传改动就上传，否则拉取最新
+window.addEventListener('online', ()=>{
+  showToast('网络已恢复，开始同步','success');
+  if(localDirty){
+    cloudRetryCount = 0;
+    saveToCloud();
+  } else {
+    syncFromCloud();
+  }
+});
+// 网络断开时更新状态（本地仍可正常记账）
+window.addEventListener('offline', ()=>{
+  updateSyncStatus('offline');
+  showToast('当前离线，数据已存本地，联网后自动同步','warning');
+});
+
+// 页面可见性变化：替代定时轮询，减少国内访问时的请求压力
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && cloudReady && navigator.onLine){
+    if(localDirty){ saveToCloud(); } else { syncFromCloud(); }
+  } else if(document.visibilityState === 'hidden' && localDirty && cloudReady && navigator.onLine){
+    // 切到后台时立即上传未同步改动，避免移动端切后台数据滞留
+    if(saveDebounceTimer){ clearTimeout(saveDebounceTimer); saveDebounceTimer = null; }
+    saveToCloud();
+  }
+});
+
+// 页面卸载前保底上传（keepalive 保证请求在页面关闭后仍能完成）
+window.addEventListener('pagehide', ()=>{
+  if(localDirty && cloudReady && navigator.onLine){
+    if(saveDebounceTimer){ clearTimeout(saveDebounceTimer); saveDebounceTimer = null; }
+    try{
+      fetch(API_URL, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ json_data: JSON.stringify(DATA), updated_at: new Date().toISOString() }),
+        keepalive: true
+      }).catch(()=>{});
+    }catch(e){ /* 忽略，本地已存 */ }
+  }
+});
+
+// 首次使用提示
+if(DATA.history.length===0 && DATA.accounts.survival===0 && DATA.accounts.improve===0 && DATA.accounts.social===0 && DATA.accounts.reserve===0){
+  setTimeout(()=>{
+    showToast('欢迎使用！试试输入：奖学金到账五千','success');
+  }, 400);
+}
+</script>
+</body>
+</html>
