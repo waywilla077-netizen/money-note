@@ -885,7 +885,7 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
     <div class="section">
       <div class="section-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        支出明细 <span class="sub">最近 50 条</span>
+        收支明细 <span class="sub">最近 50 条（一笔收入/支出一行，账单式）</span>
       </div>
       <div class="history-list" id="historyList"></div>
     </div>
@@ -2088,6 +2088,189 @@ function deleteTransaction(id){
 // 时间戳周期（YYYY-MM）判断
 function fmtPeriod(ts){ const d=new Date(+ts||0); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 
+/* ================== 收支明细：收入分流聚合（账单式一行） ================== */
+// 把同时/同来源/同备注的 1~4 条收入分流记录聚合成一个组（对应原整笔收入）
+function groupIncomeTransactions(historyArray){
+  const groups = new Map();        // groupKey -> { key, items:[tx], totalAmount, incomeType, remark, timestamp }
+  const standaloneIds = new Set(); // 不参与聚合的支出id/无法分组的收入id
+  const items = historyArray.slice();
+  // 先收集收入组的中心键
+  for(const h of items){
+    if(h.type !== 'income') continue;
+    const bucket = Math.round((h.timestamp||0)/60000); // 同 1 分钟窗口
+    const key = 'inc_' + (h.incomeType||'?') + '_' + bucket + '_' + (h.remark||'').slice(0,24);
+    if(!groups.has(key)) groups.set(key, { key, items:[], totalAmount:0, incomeType:h.incomeType, remark:h.remark, timestamp:h.timestamp, accounts:{} });
+    const g = groups.get(key);
+    g.items.push(h);
+    g.totalAmount = +(g.totalAmount + (+h.amount||0)).toFixed(2);
+    g.accounts[h.account] = (g.accounts[h.account]||0) + (+h.amount||0);
+    if(h.timestamp < g.timestamp) g.timestamp = h.timestamp;
+  }
+  // 建立组索引：组内每条 id 对应 groupKey
+  const idToGroup = new Map();
+  for(const [k,g] of groups.entries()) for(const it of g.items){ idToGroup.set(it.id, k); }
+  return { groups, idToGroup };
+}
+
+// 删除整笔收入组
+function deleteIncomeGroup(groupKey){
+  const { groups } = groupIncomeTransactions(DATA.history);
+  const g = groups.get(groupKey);
+  if(!g) return;
+  // 逐条用 deleteTransaction 删除（会各自回算余额与月度统计）
+  const ids = g.items.map(x=>x.id);
+  for(const id of ids){
+    const tx = DATA.history.find(h=>h.id===id); if(!tx) continue;
+    // 直接内联回滚，避免调用 showToast N 次
+    const nowMonth = getCurrentMonth();
+    const inSameMonth = fmtPeriod(tx.timestamp) === nowMonth;
+    if(tx.type==='expense'){
+      DATA.accounts[tx.account] = +(DATA.accounts[tx.account] + tx.amount).toFixed(2);
+      if(inSameMonth) DATA.monthlyStats.expense[tx.account] = +(DATA.monthlyStats.expense[tx.account] - tx.amount).toFixed(2);
+    } else {
+      DATA.accounts[tx.account] = +(DATA.accounts[tx.account] - tx.amount).toFixed(2);
+      if(inSameMonth) DATA.monthlyStats.income[tx.account] = +(DATA.monthlyStats.income[tx.account] - tx.amount).toFixed(2);
+    }
+    const idx = DATA.history.findIndex(h=>h.id===id);
+    if(idx>=0) DATA.history.splice(idx,1);
+  }
+  saveData(); renderAll();
+  showToast('✅ 已删除该笔收入（含 '+ids.length+' 条分流记录）','success');
+}
+
+// 保存编辑后的整笔收入组（重算四账户分流 + 新旧差额回算）
+function saveIncomeGroupEdit({groupKey, newTotal, newIncomeType, newRemark, newDateTs}){
+  const { groups } = groupIncomeTransactions(DATA.history);
+  const g = groups.get(groupKey);
+  if(!g) return false;
+  const ids = g.items.map(x=>x.id);
+  // 1) 先全量回滚该组旧分流记录
+  const nowMonth = getCurrentMonth();
+  for(const id of ids){
+    const tx = DATA.history.find(h=>h.id===id); if(!tx) continue;
+    const sameOld = fmtPeriod(tx.timestamp) === nowMonth;
+    if(tx.type==='income'){
+      DATA.accounts[tx.account] = +(DATA.accounts[tx.account] - tx.amount).toFixed(2);
+      if(sameOld) DATA.monthlyStats.income[tx.account] = +(DATA.monthlyStats.income[tx.account] - tx.amount).toFixed(2);
+    }
+  }
+  // 2) 按 新来源 / 新日期 / 新总额 重算四条新分流
+  const rule = (newIncomeType && DATA.allocationRules[newIncomeType]) ? DATA.allocationRules[newIncomeType]
+            : (newIncomeType && DEFAULT_RULES[newIncomeType]) ? DEFAULT_RULES[newIncomeType]
+            : (DATA.allocationRules[g.incomeType] || DEFAULT_RULES[g.incomeType] || DEFAULT_RULES['父母生活费']);
+  const ts = (typeof newDateTs === 'number') ? newDateTs : g.timestamp;
+  const typeFinal = newIncomeType || g.incomeType || '父母生活费';
+  const remarkFinal = (typeof newRemark === 'string' && newRemark.trim()) ? newRemark.trim() : g.remark || (typeFinal+'到账');
+  const sameNew = fmtPeriod(ts) === nowMonth;
+  // 凑整：用差额让最后一条保证和等于 newTotal
+  let parts = {};
+  let sum = 0;
+  const accs = ['survival','improve','social','reserve'];
+  accs.forEach((a,i)=>{
+    const pct = rule[a]||0;
+    if(i===accs.length-1) parts[a] = +(newTotal - sum).toFixed(2);
+    else { parts[a] = +(newTotal * pct / 100).toFixed(2); sum += parts[a]; }
+  });
+  // 3) 覆盖原组里每条子记录（尽量复用原 id 保持同步稳定）
+  const leftovers = ids.slice(); // 未被使用的旧 id
+  let usedIndex = 0;
+  for(const a of accs){
+    const amt = parts[a];
+    if(amt<=0) continue;
+    if(usedIndex < ids.length){
+      // 复用旧 id + 旧记录对象重写（原地 patch 避免同步重复）
+      const tx = DATA.history.find(h=>h.id===ids[usedIndex]);
+      if(tx){
+        tx.type='income'; tx.amount=amt; tx.account=a; tx.incomeType=typeFinal; tx.remark=remarkFinal; tx.timestamp=ts;
+      }
+      const same = fmtPeriod(ts) === nowMonth;
+      DATA.accounts[a] = +(DATA.accounts[a] + amt).toFixed(2);
+      if(same) DATA.monthlyStats.income[a] = +(DATA.monthlyStats.income[a] + amt).toFixed(2);
+      const idx = leftovers.indexOf(ids[usedIndex]); if(idx>=0) leftovers.splice(idx,1);
+      usedIndex++;
+    } else {
+      // 若原来只有 3 条，补第 4 条
+      DATA.accounts[a] = +(DATA.accounts[a] + amt).toFixed(2);
+      if(sameNew) DATA.monthlyStats.income[a] = +(DATA.monthlyStats.income[a] + amt).toFixed(2);
+      DATA.history.push({ id:genId(), type:'income', amount:amt, account:a, incomeType:typeFinal, remark:remarkFinal, timestamp:ts });
+    }
+  }
+  // 4) 没用上的旧 id（比如由 4 条缩成 3 条时），对应移除
+  for(const oldId of leftovers){
+    const idx = DATA.history.findIndex(h=>h.id===oldId); if(idx>=0) DATA.history.splice(idx,1);
+  }
+  saveData(); renderAll();
+  showToast('✅ 已更新该笔收入（'+ids.length+'→'+(accs.filter(a=>parts[a]>0).length)+' 条分流重算）','success');
+  return true;
+}
+
+// 根据聚合组打开编辑弹窗（收入） —— 复用 editModal，UI 改成“总金额 + 分流明细预览”
+let editGroupKey = null;
+function openEditGroup(groupKey){
+  const { groups } = groupIncomeTransactions(DATA.history);
+  const g = groups.get(groupKey);
+  if(!g) return;
+  editGroupKey = groupKey;
+  editTargetId = null; // 表示当前不是单条编辑模式
+  // 总金额
+  document.getElementById('editTypeText').innerHTML = '📥 收入（整笔编辑）<div class="sub" style="font-size:12px;color:#888;font-weight:400;margin-top:4px;">该笔收入共 '+g.items.length+' 条分流记录，编辑总金额将按分配比例重算四账户</div>';
+  document.getElementById('editAmount').value = g.totalAmount;
+  document.getElementById('editRemark').value = g.remark || '';
+  const d = new Date(g.timestamp);
+  document.getElementById('editDate').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  // 账户选择器：收入时仅作为“这条收入发生在哪个账户的标签展示”没意义，这里隐藏改用收入来源
+  document.getElementById('editAccountPicker').innerHTML = buildAllocationPreview(g.accounts);
+  // 收入来源
+  document.getElementById('editIncomeTypeWrap').style.display = '';
+  const sel = document.getElementById('editIncomeType');
+  sel.innerHTML = '';
+  Object.keys(DEFAULT_RULES).forEach(k=>{
+    const o = document.createElement('option');
+    o.value = k; o.textContent = k + '（生存'+DEFAULT_RULES[k].survival+'% / 悦己'+DEFAULT_RULES[k].improve+'% / 快乐'+DEFAULT_RULES[k].social+'% / 储备'+DEFAULT_RULES[k].reserve+'%）';
+    if(k === g.incomeType) o.selected = true;
+    sel.appendChild(o);
+  });
+  // 切换收入来源时，下方分流明细预览实时重算
+  sel.onchange = ()=>{
+    const total = parseFloat(document.getElementById('editAmount').value) || g.totalAmount;
+    const key = sel.value; const rule = (DATA.allocationRules[key]||DEFAULT_RULES[key]);
+    const accs = ['survival','improve','social','reserve'];
+    let s = 0; const parts = {};
+    accs.forEach((a,i)=>{
+      const pct = rule[a]||0;
+      if(i===accs.length-1) parts[a] = +(total - s).toFixed(2);
+      else { parts[a] = +(total * pct / 100).toFixed(2); s += parts[a]; }
+    });
+    document.getElementById('editAccountPicker').innerHTML = buildAllocationPreview(parts);
+  };
+  // 改总金额时，也实时更新预览
+  document.getElementById('editAmount').oninput = ()=>{
+    const total = parseFloat(document.getElementById('editAmount').value) || 0;
+    const key = document.getElementById('editIncomeType').value;
+    const rule = (DATA.allocationRules[key]||DEFAULT_RULES[key]||DEFAULT_RULES['父母生活费']);
+    const accs = ['survival','improve','social','reserve'];
+    let s = 0; const parts = {};
+    accs.forEach((a,i)=>{
+      const pct = rule[a]||0;
+      if(i===accs.length-1) parts[a] = +(total - s).toFixed(2);
+      else { parts[a] = +(total * pct / 100).toFixed(2); s += parts[a]; }
+    });
+    document.getElementById('editAccountPicker').innerHTML = buildAllocationPreview(parts);
+  };
+  openModal('editModal');
+}
+function buildAllocationPreview(amountsByAccount){
+  const accs = ['survival','improve','social','reserve'];
+  return accs.map(a=>{
+    const amt = amountsByAccount[a]||0;
+    const cfg = ACC_MAP[a];
+    return `<div class="edit-acc-btn active" style="flex-direction:column;gap:2px;line-height:1.3;">
+      <div><span style="width:12px;height:12px;display:inline-block;color:${cfg.color};vertical-align:-2px;">${cfg.icon}</span>${cfg.name}</div>
+      <div style="font-size:13px;color:${cfg.color};font-weight:700;margin-top:2px;">¥${fmt(+amt||0)}</div>
+    </div>`;
+  }).join('');
+}
+
 /* ================== 智能输入主流程 ================== */
 async function handleSmartInput(){
   const text = document.getElementById('smartInput').value.trim();
@@ -2237,13 +2420,49 @@ function renderHistory(){
   }
   list.innerHTML = '';
   const DEL_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"></path><path d="M10 11v6M14 11v6M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>';
+  // 对收入记录做分组（账单式一行）
+  const { groups, idToGroup } = groupIncomeTransactions(DATA.history);
+  const renderedGroups = new Set();
   for(const h of hist){
+    const isIncome = h.type==='income';
+    // 如果是收入分流记录：看它所在的组是否已经渲染过；跳过重复子记录，只渲染一次组行
+    if(isIncome){
+      const gkey = idToGroup.get(h.id);
+      if(gkey){
+        if(renderedGroups.has(gkey)) continue;
+        renderedGroups.add(gkey);
+        const g = groups.get(gkey);
+        // 组行：显示总金额 + 收入来源 tag + 账户明细小 tag
+        const accMini = Object.keys(g.accounts||{}).sort((a,b)=>(g.accounts[b]||0)-(g.accounts[a]||0)).slice(0,4).map(a=>{
+          const c = ACC_MAP[a]; return `<span class="hist-tag" style="background:${c.color}22;color:${c.color};border:1px solid ${c.color}33;">${c.name} ¥${fmt(g.accounts[a]||0)}</span>`;
+        }).join(' ');
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `
+          <div class="hist-icon" style="color:var(--accent);">${ICONS.money}</div>
+          <div class="hist-body">
+            <div class="hist-remark">${g.remark || (g.incomeType||'收入')+'到账'}</div>
+            <div class="hist-meta">
+              <span class="hist-tag" style="background:linear-gradient(135deg,#6b7fd4,#8ab3b3);">📥 ${g.incomeType||'收入'} · 含${g.items.length}条分流</span>
+              <span>${fmtTime(g.timestamp)}</span>
+            </div>
+            <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${accMini}</div>
+          </div>
+          <div class="hist-amount income" style="font-weight:800;">+¥${fmt(g.totalAmount)}</div>
+          <button class="hist-edit" data-group="${gkey}" title="编辑整笔收入" style="color:var(--text-muted);">${ICONS.edit}</button>
+          <button class="hist-delete" data-group="${gkey}" title="删除整笔收入">${DEL_ICON}</button>
+        `;
+        list.appendChild(item);
+        continue;
+      }
+      // 非组内的孤立项（理论不会有），仍按单条渲染
+    }
+    // 支出（或独立收入）：单条一行
     const acc = ACC_MAP[h.account];
     const item = document.createElement('div');
     item.className = 'history-item';
-    const isIncome = h.type==='income';
     item.innerHTML = `
-      <div class="hist-icon" style="color:${acc.color};">${isIncome?ICONS.money:acc.icon}</div>
+      <div class="hist-icon" style="color:${acc.color};">${acc.icon}</div>
       <div class="hist-body">
         <div class="hist-remark">${h.remark||acc.name}</div>
         <div class="hist-meta">
@@ -2258,13 +2477,24 @@ function renderHistory(){
     `;
     list.appendChild(item);
   }
-  list.querySelectorAll('.hist-edit').forEach(btn=>{
+  // 事件：单条编辑/删除
+  list.querySelectorAll('.hist-edit[data-id]').forEach(btn=>{
     btn.addEventListener('click', ()=>openEditTx(btn.dataset.id));
   });
-  list.querySelectorAll('.hist-delete').forEach(btn=>{
+  list.querySelectorAll('.hist-delete[data-id]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const ok = await showConfirm('确定要删除该笔记录吗？四账户余额与本月统计会同步回算。','删除记录','确定删除');
       if(ok) deleteTransaction(btn.dataset.id);
+    });
+  });
+  // 事件：组（整笔收入）编辑/删除
+  list.querySelectorAll('.hist-edit[data-group]').forEach(btn=>{
+    btn.addEventListener('click', ()=>openEditGroup(btn.dataset.group));
+  });
+  list.querySelectorAll('.hist-delete[data-group]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const ok = await showConfirm('确定删除该笔整收入吗？四账户分流记录都会删除，并回算余额与本月统计。','删除整笔收入','确定删除');
+      if(ok) deleteIncomeGroup(btn.dataset.group);
     });
   });
 }
@@ -2666,6 +2896,19 @@ function bindEvents(){
   });
   // 编辑 Modal：保存 / 删除
   document.getElementById('btnSaveEdit').addEventListener('click', ()=>{
+    if(editGroupKey){
+      // 组模式（整笔收入重算）
+      const total = parseFloat(document.getElementById('editAmount').value);
+      if(!total || total<=0){ showToast('总金额无效','error'); return; }
+      const newIncomeType = document.getElementById('editIncomeType').value;
+      const remark = document.getElementById('editRemark').value.trim();
+      const dateStr = document.getElementById('editDate').value;
+      const [y,m,d] = (dateStr||'').split('-').map(x=>parseInt(x));
+      const ts = (y && m && d) ? (new Date(y, m-1, d, 12, 0, 0, 0).getTime()) : null;
+      saveIncomeGroupEdit({groupKey:editGroupKey, newTotal:total, newIncomeType, newRemark:remark, newDateTs:ts});
+      closeModal('editModal');
+      return;
+    }
     if(!editTargetId) return;
     const amount = parseFloat(document.getElementById('editAmount').value);
     if(!amount || amount<=0){ showToast('金额无效','error'); return; }
@@ -2686,6 +2929,11 @@ function bindEvents(){
     showToast('✅ 已保存修改','success');
   });
   document.getElementById('btnDeleteTx').addEventListener('click', async ()=>{
+    if(editGroupKey){
+      const ok = await showConfirm('确定删除该笔整收入吗？四账户分流记录都会删除，并回算余额与本月统计。','删除整笔收入','确定删除');
+      if(ok){ deleteIncomeGroup(editGroupKey); closeModal('editModal'); }
+      return;
+    }
     if(!editTargetId) return;
     const ok = await showConfirm('确定删除该笔记录吗？删除后四账户余额与本月统计自动回算。','删除确认','确定删除');
     if(ok){
