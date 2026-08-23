@@ -962,6 +962,24 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
           <label class="form-label">Gist ID（首次同步后自动填入，换设备填此 ID 可指向同一份数据）</label>
           <input type="text" class="form-control" id="ghGistIdInput" placeholder="留空自动创建私有 Gist，或填已有 ID 指向同一份">
         </div>
+        <div class="form-group">
+          <label class="form-label">同步网络节点（直连不通时换国内中转）</label>
+          <div id="proxyRadioGroup" style="display:flex;flex-direction:column;gap:8px;padding:4px 2px 8px;">
+            <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-weight:normal;">
+              <input type="radio" name="ghProxy" value="direct" style="margin-top:3px;">
+              <div><b>直连 GitHub</b><div class="sub" style="font-size:12px;color:#666;margin-top:2px;">境外网络 / Wi-Fi / 开了代理（默认）</div></div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-weight:normal;">
+              <input type="radio" name="ghProxy" value="proxy" style="margin-top:3px;">
+              <div><b>国内中转节点 ghproxy.net 🚀</b><div class="sub" style="font-size:12px;color:#666;margin-top:2px;">手机 4G/5G 不开代理首选，速度最快</div></div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-weight:normal;">
+              <input type="radio" name="ghProxy" value="fallback" style="margin-top:3px;">
+              <div><b>备用节点 gh.api.99988866.xyz</b><div class="sub" style="font-size:12px;color:#666;margin-top:2px;">如果 ghproxy 也失败，切到这个再试</div></div>
+            </label>
+          </div>
+          <div class="sub" style="font-size:12px;color:#888;margin-top:2px;">节点仅本地生效，每台设备自己选择（电脑直连、手机选中转即可）。切换后建议点右上角圆点手动触发一次同步。</div>
+        </div>
         <div class="row-actions">
           <button class="btn btn-secondary" id="btnClearGhConfig">清空 Token</button>
           <button class="btn btn-primary" id="btnSaveGhConfig">保存并启用同步</button>
@@ -1093,17 +1111,37 @@ const INCOME_ACTION = ['发了','到账','收入','收到','进账','入账','�
 const EXPENSE_ACTION = ['花了','花掉','消费','支出','开销','买了','付了','付','充了','充值','买','吃饭','吃','喝'];
 
 /* ================== 云端同步配置（GitHub Gist 模式，纯静态可用，国内访问更稳） ================== */
-const GIST_API = 'https://api.github.com';
+const GIST_API_DIRECT = 'https://api.github.com';
+const GIST_API_PROXY  = 'https://ghproxy.net/https://api.github.com';
+const GIST_API_FALLBACK_PROXY = 'https://gh.api.99988866.xyz/https://api.github.com';
 const GIST_FILENAME = 'four-money-data.json';
 const GIST_DESC = '四笔钱记账助手数据（私有 Gist，请不要手动修改内容）';
 const TOKEN_STORAGE_KEY = 'fourMoneyGhToken';
 const GISTID_STORAGE_KEY = 'fourMoneyGhGistId';
+const PROXY_STORAGE_KEY = 'fourMoneyGhProxy';
 const SAVE_DEBOUNCE_MS = 2000;
 const MAX_RETRY = 6;
 
 let ghToken = localStorage.getItem(TOKEN_STORAGE_KEY) || '';   // 用户填的 GitHub PAT
 let ghGistId = localStorage.getItem(GISTID_STORAGE_KEY) || ''; // 第一次创建后缓存的 Gist ID
+let ghProxyMode = localStorage.getItem(PROXY_STORAGE_KEY) || 'direct'; // direct / proxy / fallback
 let cloudReady = !!ghToken;                                   // 有 Token 才算云端可用
+
+// 根据当前模式返回 Gist API 前缀
+function getGistApi(){
+  if(ghProxyMode === 'proxy')    return GIST_API_PROXY;
+  if(ghProxyMode === 'fallback') return GIST_API_FALLBACK_PROXY;
+  return GIST_API_DIRECT;
+}
+
+// 保存代理模式（本地）+ 返回对用户友好的节点名
+function setProxyMode(mode){
+  ghProxyMode = ['direct','proxy','fallback'].includes(mode) ? mode : 'direct';
+  localStorage.setItem(PROXY_STORAGE_KEY, ghProxyMode);
+}
+function proxyModeLabel(m){
+  return ({ direct:'直连 GitHub（境外网络/Wi-Fi）', proxy:'国内中转节点 ghproxy.net（手机 4G/5G 推荐）', fallback:'备用节点 gh.api.99988866.xyz' })[m] || m;
+}
 
 // 同步状态变量
 let isCloudSaving = false;
@@ -1179,7 +1217,7 @@ async function loadFromCloud(){
     let gist;
     if(gistId){
       // 有缓存的 Gist ID，直接读
-      const r = await fetch(GIST_API+'/gists/'+gistId, { headers: ghHeaders(), cache:'no-store' });
+      const r = await fetch(getGistApi()+'/gists/'+gistId, { headers: ghHeaders(), cache:'no-store' });
       if(!r.ok){ // Gist 可能被删 / 权限不对 → 尝试重新找或新建
         if(r.status === 404){ ghGistId=''; localStorage.removeItem(GISTID_STORAGE_KEY); gistId=''; }
         else throw new Error('Gist GET HTTP '+r.status);
@@ -1189,7 +1227,7 @@ async function loadFromCloud(){
     }
     if(!gist){
       // 没有 Gist，尝试查同名 Gist（多端一致）
-      const list = await fetch(GIST_API+'/gists?per_page=100', { headers: ghHeaders({cache:'no-store'}) });
+      const list = await fetch(getGistApi()+'/gists?per_page=100', { headers: ghHeaders({cache:'no-store'}) });
       if(!list.ok) throw new Error('Gist LIST HTTP '+list.status);
       const items = await list.json();
       gist = items.find(g=>g.files && g.files[GIST_FILENAME]);
@@ -1227,14 +1265,14 @@ async function saveToCloud(){
     });
     let res;
     if(ghGistId){
-      res = await fetch(GIST_API+'/gists/'+ghGistId, {
+      res = await fetch(getGistApi()+'/gists/'+ghGistId, {
         method:'PATCH', headers: ghHeaders({'Content-Type':'application/json'}), body
       });
       if(res.status === 404){ ghGistId=''; localStorage.removeItem(GISTID_STORAGE_KEY); }
     }
     if(!ghGistId){
       // 新建（私有，仅自己可见）
-      res = await fetch(GIST_API+'/gists', {
+      res = await fetch(getGistApi()+'/gists', {
         method:'POST', headers: ghHeaders({'Content-Type':'application/json'}), body
       });
     }
@@ -1995,13 +2033,19 @@ function renderGhConfigUI(){
   const g = document.getElementById('ghGistIdInput');
   if(t) t.value = ghToken || '';
   if(g) g.value = ghGistId || '';
+  // 代理节点 radio
+  const radios = document.querySelectorAll('input[name="ghProxy"]');
+  radios.forEach(r=>{ r.checked = (r.value === ghProxyMode); });
 }
 // 提交 GitHub 配置（从表单读取）
 function submitGhConfig(){
   const t = document.getElementById('ghTokenInput').value.trim();
   const g = document.getElementById('ghGistIdInput').value.trim();
+  const proxyEl = document.querySelector('input[name="ghProxy"]:checked');
+  const proxyMode = proxyEl ? proxyEl.value : 'direct';
+  setProxyMode(proxyMode);
   saveGhConfig(t, g);
-  showToast('GitHub 配置已保存','success');
+  showToast('GitHub 配置已保存，当前节点：'+proxyModeLabel(proxyMode),'success');
 }
 // 清空 GitHub 配置
 function resetGhConfig(){
