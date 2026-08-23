@@ -163,6 +163,16 @@ body{
 .sync-indicator.error .sync-dot{background:var(--danger);}
 .sync-indicator.offline .sync-dot{background:#9ca3af;}
 @keyframes sync-pulse{0%,100%{opacity:1;}50%{opacity:0.25;}}
+
+/* 设置模态新增样式 */
+.req{color:var(--warning);font-weight:500;font-size:12px;margin-left:4px;}
+.divider{border:none;border-top:1px dashed var(--border);margin:18px 0 6px;}
+.row-actions{display:flex;gap:10px;justify-content:flex-end;margin:6px 0 4px;}
+.link-btn{
+  display:inline-block;margin-top:6px;font-size:12px;color:#2563eb;text-decoration:none;cursor:pointer;
+  padding:4px 10px;border-radius:8px;background:rgba(37,99,235,0.06);transition:background 0.15s;
+}
+.link-btn:hover{background:rgba(37,99,235,0.12);text-decoration:none;}
 .total-card{
   background:rgba(255,255,255,0.85);
   backdrop-filter:var(--glass-blur);
@@ -930,13 +940,44 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
     <div class="modal-header">
       <div class="modal-title">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;margin-right:6px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        分配比例设置
+        设置
       </div>
       <button class="modal-close" data-close="settingsModal">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="modal-body">
+      <!-- GitHub 云端同步配置 -->
+      <div id="ghConfigPanel">
+        <div class="section-title" style="padding:0 0 10px;margin-top:0;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+          云端同步 · GitHub Gist <span class="sub">推荐，国内访问稳</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">GitHub Personal Access Token <span class="req">（仅本地保存）</span></label>
+          <input type="password" class="form-control" id="ghTokenInput" placeholder="ghp_xxxxxxxxxxxxxxxx  需勾选 gist 权限" autocomplete="off">
+          <a class="link-btn" href="https://github.com/settings/tokens/new?description=%E5%9B%9B%E7%AC%94%E9%92%B1%E8%AE%B0%E8%B4%A6%E5%8A%A9%E6%89%8B&scopes=gist" target="_blank" rel="noopener">🔗 去 GitHub 生成（只勾 gist → Generate token）</a>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gist ID（首次同步后自动填入，换设备填此 ID 可指向同一份数据）</label>
+          <input type="text" class="form-control" id="ghGistIdInput" placeholder="留空自动创建私有 Gist，或填已有 ID 指向同一份">
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-secondary" id="btnClearGhConfig">清空 Token</button>
+          <button class="btn btn-primary" id="btnSaveGhConfig">保存并启用同步</button>
+        </div>
+        <div class="note-box">
+          工作原理：数据打包成 JSON 写入你的 GitHub 私有 Gist（仅自己可见）。手机/电脑填同一个 Token 即可跨端自动同步。<b>不填 Token 也能用</b>：数据仅保存在当前浏览器 localStorage，可随时通过底部按钮导出 JSON 备份。
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- 收入分配比例 -->
+      <div class="section-title" style="padding:6px 0 10px;margin-top:6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        收入分配比例
+      </div>
       <table class="alloc-table">
         <thead>
           <tr><th>收入来源</th><th>生存</th><th>悦己</th><th>快乐</th><th>储备</th><th>合计</th></tr>
@@ -948,8 +989,8 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="btnResetAlloc">恢复默认</button>
-      <button class="btn btn-primary" id="btnSaveAlloc" style="margin:0;">保存</button>
+      <button class="btn btn-secondary" id="btnResetAlloc">恢复默认比例</button>
+      <button class="btn btn-primary" id="btnSaveAlloc" style="margin:0;">保存比例</button>
     </div>
   </div>
 </div>
@@ -1051,89 +1092,166 @@ const INCOME_KEYWORDS = {
 const INCOME_ACTION = ['发了','到账','收入','收到','进账','入账','打钱','打款','转账','汇款','入卡','给我'];
 const EXPENSE_ACTION = ['花了','花掉','消费','支出','开销','买了','付了','付','充了','充值','买','吃饭','吃','喝'];
 
-/* ================== 云端同步配置 ================== */
-// Cloudflare Pages Functions API（前后端同域名，无需配置 URL）
-// 部署到 Cloudflare Pages 后自动生效；本地开发可用 wrangler pages dev 测试
-const API_URL = '/api/data';
-let cloudReady = true;            // Cloudflare 方案默认启用云端同步
-const SAVE_DEBOUNCE_MS = 2000;    // 本地改动后防抖合并上传的间隔
-const MAX_RETRY = 6;              // 云端保存失败最大重试次数
+/* ================== 云端同步配置（GitHub Gist 模式，纯静态可用，国内访问更稳） ================== */
+const GIST_API = 'https://api.github.com';
+const GIST_FILENAME = 'four-money-data.json';
+const GIST_DESC = '四笔钱记账助手数据（私有 Gist，请不要手动修改内容）';
+const TOKEN_STORAGE_KEY = 'fourMoneyGhToken';
+const GISTID_STORAGE_KEY = 'fourMoneyGhGistId';
+const SAVE_DEBOUNCE_MS = 2000;
+const MAX_RETRY = 6;
+
+let ghToken = localStorage.getItem(TOKEN_STORAGE_KEY) || '';   // 用户填的 GitHub PAT
+let ghGistId = localStorage.getItem(GISTID_STORAGE_KEY) || ''; // 第一次创建后缓存的 Gist ID
+let cloudReady = !!ghToken;                                   // 有 Token 才算云端可用
 
 // 同步状态变量
-let isCloudSaving = false;        // 是否正在向云端写入
-let pendingCloudSave = false;     // 写入期间又来了新保存，标记需要再写一次
-let cloudRetryCount = 0;          // 当前重试计数
-let cloudRetryTimer = null;       // 重试定时器句柄
-let saveDebounceTimer = null;     // 防抖定时器句柄
-let lastSyncedAt = 0;             // 最后一次成功同步到云端的时间戳
-let localDirty = false;          // 本地是否存在未上传到云端的改动
+let isCloudSaving = false;
+let pendingCloudSave = false;
+let cloudRetryCount = 0;
+let cloudRetryTimer = null;
+let saveDebounceTimer = null;
+let lastSyncedAt = 0;
+let localDirty = false;
 
-// 初始化（Cloudflare 方案无需额外初始化）
+// 初始化 Gist 模式：提示未填 Token
 function initCloud(){
-  console.log('云端同步已启用（Cloudflare Pages + D1）');
+  if(ghToken) console.log('云端同步已启用（GitHub Gist 模式，纯静态可用）');
+  else console.log('未配置 GitHub Token：数据仅存本地 localStorage，跨设备同步需在设置中填入 GitHub Personal Access Token（勾 gist 权限）');
 }
 
-// 同步状态指示器更新
+// 保存配置（Token/GistId 到本地 + 重算 cloudReady + 立即触发一次拉取）
+function saveGhConfig(token, gistId){
+  ghToken = (token||'').trim();
+  ghGistId = (gistId||'').trim();
+  if(ghToken) localStorage.setItem(TOKEN_STORAGE_KEY, ghToken); else localStorage.removeItem(TOKEN_STORAGE_KEY);
+  if(ghGistId) localStorage.setItem(GISTID_STORAGE_KEY, ghGistId); else localStorage.removeItem(GISTID_STORAGE_KEY);
+  const wasReady = cloudReady;
+  cloudReady = !!ghToken;
+  if(cloudReady){
+    if(!wasReady) showToast('GitHub 同步已启用','success');
+    syncFromCloud();
+  } else {
+    showToast('GitHub Token 未填写：跨设备同步暂不可用（仅本地保存）','warning');
+  }
+  updateSyncStatus(cloudReady ? (localDirty?'pending':'synced') : 'error');
+  renderGhConfigUI();
+}
+
+// Gist 授权头
+function ghHeaders(extra){
+  return Object.assign({
+    'Accept':'application/vnd.github+json',
+    'Authorization':'Bearer '+ghToken,
+    'X-GitHub-Api-Version':'2022-11-28'
+  }, extra||{});
+}
+
+// 同步状态指示器更新（未配置 Token 显示文案区分）
 function updateSyncStatus(status){
   const el = document.getElementById('syncIndicator');
   if(!el) return;
+  if(!ghToken){
+    el.className = 'sync-indicator error';
+    el.querySelector('.sync-text').textContent = '未启用';
+    el.title = '未填 GitHub Token：数据仅存本机。打开设置填入带 gist 权限的 PAT 即可启用跨设备同步。';
+    return;
+  }
   el.className = 'sync-indicator ' + status;
   const texts = { pending:'未同步', syncing:'同步中', synced:'已同步', error:'同步失败', offline:'离线' };
   const tips = {
     pending: '点击立即同步',
-    syncing: '正在同步到云端…',
+    syncing: '正在同步到 Gist 云端…',
     synced: lastSyncedAt ? ('云端已同步 '+new Date(lastSyncedAt).toLocaleTimeString('zh-CN')) : '云端已同步',
-    error: '同步失败，点击重试（数据已存本地，不会丢失）',
+    error: '同步失败，点击重试（数据已存本地，不会丢失）。请检查 Token 与网络。',
     offline: '当前离线，数据已存本地，联网后自动同步'
   };
   el.querySelector('.sync-text').textContent = texts[status] || status;
   el.title = tips[status] || '';
 }
 
-// 从云端加载数据（同时返回 updated_at 用于冲突判断）
+// 从 Gist 云端读取数据 + 元信息
 async function loadFromCloud(){
-  if(!cloudReady) return null;
+  if(!cloudReady || !ghToken) return null;
+  if(!navigator.onLine) return null;
   try{
-    const res = await fetch(API_URL, { cache:'no-store' });
-    if(!res.ok) return null;
-    const result = await res.json();
-    if(!result.data) return null;
-    return {
-      data: JSON.parse(result.data),
-      updatedAt: result.updated_at ? new Date(result.updated_at).getTime() : 0
-    };
+    let gistId = ghGistId;
+    let gist;
+    if(gistId){
+      // 有缓存的 Gist ID，直接读
+      const r = await fetch(GIST_API+'/gists/'+gistId, { headers: ghHeaders(), cache:'no-store' });
+      if(!r.ok){ // Gist 可能被删 / 权限不对 → 尝试重新找或新建
+        if(r.status === 404){ ghGistId=''; localStorage.removeItem(GISTID_STORAGE_KEY); gistId=''; }
+        else throw new Error('Gist GET HTTP '+r.status);
+      } else {
+        gist = await r.json();
+      }
+    }
+    if(!gist){
+      // 没有 Gist，尝试查同名 Gist（多端一致）
+      const list = await fetch(GIST_API+'/gists?per_page=100', { headers: ghHeaders({cache:'no-store'}) });
+      if(!list.ok) throw new Error('Gist LIST HTTP '+list.status);
+      const items = await list.json();
+      gist = items.find(g=>g.files && g.files[GIST_FILENAME]);
+      if(gist){ ghGistId = gist.id; localStorage.setItem(GISTID_STORAGE_KEY, gist.id); }
+    }
+    if(!gist || !gist.files || !gist.files[GIST_FILENAME]) return null; // 从未存过
+    const content = gist.files[GIST_FILENAME].content;
+    if(!content) return null;
+    try{
+      const parsed = JSON.parse(content);
+      return { data:parsed.data, updatedAt: parsed.updated_at ? new Date(parsed.updated_at).getTime() : (gist.updated_at ? new Date(gist.updated_at).getTime() : 0) };
+    }catch(e){
+      // 旧格式兼容：直接存的整个 DATA
+      return { data: JSON.parse(content), updatedAt: gist.updated_at ? new Date(gist.updated_at).getTime() : 0 };
+    }
   }catch(e){
-    console.log('云端加载失败', e);
+    console.log('Gist 云端加载失败', e);
     return null;
   }
 }
 
-// 保存数据到云端（带指数退避重试 + 防并发 + 状态指示）
+// 保存数据到 Gist：首次自动创建私有 Gist，之后 PATCH 更新
 async function saveToCloud(){
-  if(!cloudReady) return;
+  if(!cloudReady || !ghToken) return;
   if(!navigator.onLine){ updateSyncStatus('offline'); return; }
-  if(isCloudSaving){ pendingCloudSave = true; return; }   // 已有请求在飞，排队
+  if(isCloudSaving){ pendingCloudSave = true; return; }
   isCloudSaving = true;
   updateSyncStatus('syncing');
   try{
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        json_data: JSON.stringify(DATA),
-        updated_at: new Date().toISOString()
-      })
+    const payload = JSON.stringify({ data: DATA, updated_at: new Date().toISOString() });
+    const body = JSON.stringify({
+      description: GIST_DESC,
+      public: false,
+      files: { [GIST_FILENAME]: { content: payload } }
     });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
+    let res;
+    if(ghGistId){
+      res = await fetch(GIST_API+'/gists/'+ghGistId, {
+        method:'PATCH', headers: ghHeaders({'Content-Type':'application/json'}), body
+      });
+      if(res.status === 404){ ghGistId=''; localStorage.removeItem(GISTID_STORAGE_KEY); }
+    }
+    if(!ghGistId){
+      // 新建（私有，仅自己可见）
+      res = await fetch(GIST_API+'/gists', {
+        method:'POST', headers: ghHeaders({'Content-Type':'application/json'}), body
+      });
+    }
+    if(!res.ok){
+      const errTxt = await res.text().catch(()=>'');
+      throw new Error('Gist HTTP '+res.status+' '+(errTxt||''));
+    }
+    const created = await res.json();
+    if(created && created.id && created.id !== ghGistId){ ghGistId = created.id; localStorage.setItem(GISTID_STORAGE_KEY, created.id); renderGhConfigUI(); }
     cloudRetryCount = 0;
     localDirty = false;
     lastSyncedAt = Date.now();
     updateSyncStatus('synced');
   }catch(e){
-    console.log('云端保存失败', e);
+    console.log('Gist 云端保存失败', e);
     cloudRetryCount++;
     updateSyncStatus('error');
-    // 指数退避重试：1s、2s、4s、8s、16s、32s
     if(cloudRetryTimer) clearTimeout(cloudRetryTimer);
     if(cloudRetryCount <= MAX_RETRY){
       const delay = Math.min(1000 * Math.pow(2, cloudRetryCount), 60000);
@@ -1141,7 +1259,7 @@ async function saveToCloud(){
     }
   }finally{
     isCloudSaving = false;
-    if(pendingCloudSave){ pendingCloudSave = false; saveToCloud(); }  // 处理排队的请求
+    if(pendingCloudSave){ pendingCloudSave = false; saveToCloud(); }
   }
 }
 
@@ -1868,7 +1986,28 @@ function updateAllRowSums(){
 }
 function openSettings(){
   renderAllocTable();
+  renderGhConfigUI();
   openModal('settingsModal');
+}
+// 填充设置里的 GitHub 配置
+function renderGhConfigUI(){
+  const t = document.getElementById('ghTokenInput');
+  const g = document.getElementById('ghGistIdInput');
+  if(t) t.value = ghToken || '';
+  if(g) g.value = ghGistId || '';
+}
+// 提交 GitHub 配置（从表单读取）
+function submitGhConfig(){
+  const t = document.getElementById('ghTokenInput').value.trim();
+  const g = document.getElementById('ghGistIdInput').value.trim();
+  saveGhConfig(t, g);
+  showToast('GitHub 配置已保存','success');
+}
+// 清空 GitHub 配置
+function resetGhConfig(){
+  saveGhConfig('', '');
+  renderGhConfigUI();
+  showToast('已清空 Token，同步已关闭','warning');
 }
 function saveAlloc(){
   const rows = document.querySelectorAll('#allocBody tr');
@@ -2020,18 +2159,21 @@ function bindEvents(){
     e.target.value='';
   });
   document.getElementById('btnClear').addEventListener('click', clearAllData);
-  // 同步指示器：点击手动同步
+  // GitHub 配置按钮
+  document.getElementById('btnSaveGhConfig').addEventListener('click', submitGhConfig);
+  document.getElementById('btnClearGhConfig').addEventListener('click', resetGhConfig);
+  // 同步指示器：点击手动同步（未填 Token → 打开设置）
   document.getElementById('syncIndicator').addEventListener('click', ()=>{
+    if(!ghToken){ openSettings(); showToast('请先在设置中填入 GitHub Token（勾 gist 权限）','warning'); return; }
     if(!navigator.onLine){ showToast('当前离线，数据已存本地','warning'); return; }
     if(localDirty){
-      // 有未同步改动，立即上传（取消防抖，立即执行）
       if(saveDebounceTimer){ clearTimeout(saveDebounceTimer); saveDebounceTimer = null; }
       cloudRetryCount = 0;
       saveToCloud();
-      showToast('正在上传到云端…','success');
+      showToast('正在上传到 Gist 云端…','success');
     } else {
       syncFromCloud();
-      showToast('正在拉取云端最新数据…','success');
+      showToast('正在从 Gist 拉取最新数据…','success');
     }
   });
 }
@@ -2041,13 +2183,16 @@ initCloud();
 loadData();
 bindEvents();
 renderAll();
-updateSyncStatus(navigator.onLine ? 'pending' : 'offline');
+if(!ghToken) updateSyncStatus('error');
+else updateSyncStatus(navigator.onLine ? 'pending' : 'offline');
 
-// 启动时从云端拉取最新数据（失败也不影响本地使用，静默重试）
-syncFromCloud().catch(e=>console.log('启动同步失败', e));
+// 启动时从云端拉取最新数据（没配置 Token 则跳过；失败也不影响本地使用）
+if(ghToken) syncFromCloud().catch(e=>console.log('启动同步失败', e));
+else setTimeout(()=>{ if(!ghToken) showToast('💡 设置里填入 GitHub Token（仅勾 gist）即可启用手机/电脑跨端同步','success'); }, 800);
 
-// 网络恢复时自动同步：有未上传改动就上传，否则拉取最新
+// 网络恢复时自动同步（无 Token 不触发云端动作）
 window.addEventListener('online', ()=>{
+  if(!ghToken){ updateSyncStatus('error'); return; }
   showToast('网络已恢复，开始同步','success');
   if(localDirty){
     cloudRetryCount = 0;
@@ -2058,31 +2203,42 @@ window.addEventListener('online', ()=>{
 });
 // 网络断开时更新状态（本地仍可正常记账）
 window.addEventListener('offline', ()=>{
-  updateSyncStatus('offline');
-  showToast('当前离线，数据已存本地，联网后自动同步','warning');
+  if(ghToken) updateSyncStatus('offline');
+  else updateSyncStatus('error');
+  if(ghToken) showToast('当前离线，数据已存本地，联网后自动同步','warning');
 });
 
-// 页面可见性变化：替代定时轮询，减少国内访问时的请求压力
+// 页面可见性变化：无 Token 直接跳过
 document.addEventListener('visibilitychange', ()=>{
+  if(!ghToken) return;
   if(document.visibilityState === 'visible' && cloudReady && navigator.onLine){
     if(localDirty){ saveToCloud(); } else { syncFromCloud(); }
   } else if(document.visibilityState === 'hidden' && localDirty && cloudReady && navigator.onLine){
-    // 切到后台时立即上传未同步改动，避免移动端切后台数据滞留
     if(saveDebounceTimer){ clearTimeout(saveDebounceTimer); saveDebounceTimer = null; }
     saveToCloud();
   }
 });
 
-// 页面卸载前保底上传（keepalive 保证请求在页面关闭后仍能完成）
+// 页面卸载前保底上传（Gist 模式）
 window.addEventListener('pagehide', ()=>{
-  if(localDirty && cloudReady && navigator.onLine){
+  if(localDirty && cloudReady && ghToken && navigator.onLine){
     if(saveDebounceTimer){ clearTimeout(saveDebounceTimer); saveDebounceTimer = null; }
     try{
-      fetch(API_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ json_data: JSON.stringify(DATA), updated_at: new Date().toISOString() }),
-        keepalive: true
+      const body = JSON.stringify({
+        description: GIST_DESC, public:false,
+        files:{ [GIST_FILENAME]:{ content: JSON.stringify({ data:DATA, updated_at:new Date().toISOString() }) } }
+      });
+      const url = ghGistId ? (GIST_API+'/gists/'+ghGistId) : (GIST_API+'/gists');
+      const method = ghGistId ? 'PATCH' : 'POST';
+      fetch(url, {
+        method,
+        headers:{
+          'Accept':'application/vnd.github+json',
+          'Authorization':'Bearer '+ghToken,
+          'X-GitHub-Api-Version':'2022-11-28',
+          'Content-Type':'application/json'
+        },
+        body, keepalive:true
       }).catch(()=>{});
     }catch(e){ /* 忽略，本地已存 */ }
   }
