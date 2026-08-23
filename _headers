@@ -1,0 +1,23 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Alt-Svc: clear
+  Cache-Control: public, max-age=300, s-maxage=300, stale-while-revalidate=86400, stale-if-error=604800
+
+# 静态资源强缓存
+/index.html
+  Cache-Control: no-cache, must-revalidate
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.png
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.svg
+  Cache-Control: public, max-age=31536000, immutable
