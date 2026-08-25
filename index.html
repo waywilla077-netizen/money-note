@@ -2874,9 +2874,31 @@ function resetAlloc(){
 }
 
 /* ================== 导入导出/清空 ================== */
-// 导出为 Excel（HTML table + .xls，Excel/WPS 直接打开，容错性极高，支持样式）
-function exportData(){
-  // 准备数据：按时间正序（早→晚）
+// 动态加载 SheetJS（生成真正的 .xlsx，Excel/WPS 100% 兼容）
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = ()=>resolve(window.XLSX);
+    s.onerror = ()=>{
+      // 备用 CDN
+      const s2 = document.createElement('script');
+      s2.src = 'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s2.onload = ()=>resolve(window.XLSX);
+      s2.onerror = ()=>reject(new Error('Excel 库加载失败，请检查网络后重试'));
+      document.head.appendChild(s2);
+    };
+    document.head.appendChild(s);
+  });
+}
+// 导出为真正的 Excel .xlsx（SheetJS 生成，Excel/WPS 直接打开）
+async function exportData(){
+  let XLSX;
+  try{ XLSX = await loadXLSX(); }
+  catch(e){ showToast('导出失败：'+e.message,'error'); return; }
+
+  // 准备数据：按时间正序
   const sorted = DATA.history.slice().sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
   const { groups, idToGroup } = groupIncomeTransactions(sorted);
   const renderedGroups = new Set();
@@ -2915,70 +2937,50 @@ function exportData(){
   rows.forEach(r=>{ if(r.type==='收入') incomeSum += (+r.amount||0); else expenseSum += (+r.amount||0); });
   const totalSum = incomeSum - expenseSum;
 
-  const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const fmtDate = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
                    + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
   const money = n => (+n||0).toFixed(2);
 
-  // 构造 HTML table（.xls 伪格式，Excel/WPS 直接打开）
-  let html = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
-  html += '<head><meta charset="utf-8"><style>';
-  html += 'table{border-collapse:collapse;width:100%;font-family:"微软雅黑",Arial,sans-serif;}';
-  html += 'td,th{border:1px solid #ddd;padding:6px 10px;font-size:11pt;}';
-  html += '.title{font-size:16pt;font-weight:bold;text-align:center;color:#1a1a2e;background:#f0f0f8;padding:10px;}';
-  html += '.subtitle{font-size:10pt;color:#666;text-align:center;background:#fafafa;}';
-  html += 'th{background:#6b7fd4;color:#fff;font-weight:bold;text-align:center;}';
-  html += '.income{color:#0a8754;}';
-  html += '.expense{color:#d9304a;}';
-  html += '.totalrow{background:#e8eaf6;font-weight:bold;color:#1a1a2e;}';
-  html += '.section{font-size:12pt;font-weight:bold;color:#6b7fd4;background:#f5f6fc;padding:8px;}';
-  html += '.balrow{background:#fafbff;}';
-  html += '</style></head><body>';
-  html += '<table>';
-  // 标题行
-  html += '<tr><td colspan="7" class="title">四笔钱记账助手 · 收支明细（'+esc(nowMonth)+'）</td></tr>';
-  html += '<tr><td colspan="7" class="subtitle">导出时间：'+esc(fmtDate(new Date()))+' · 共 '+rows.length+' 笔记录</td></tr>';
-  html += '<tr><td colspan="7" style="height:8px;"></td></tr>';
-  // 表头
-  html += '<tr><th>日期</th><th>类型</th><th>来源/账户</th><th>备注</th><th>金额(元)</th><th>四账户</th><th>分流明细</th></tr>';
-  // 数据行
+  // 构造二维数组（SheetJS aoa_to_sheet）
+  const aoa = [];
+  aoa.push(['四笔钱记账助手 · 收支明细（'+nowMonth+'）']);                    // 行1 标题
+  aoa.push(['导出时间：'+fmtDate(new Date())+' · 共 '+rows.length+' 笔记录']); // 行2 副标题
+  aoa.push([]);                                                              // 行3 空
+  aoa.push(['日期','类型','来源/账户','备注','金额(元)','四账户','分流明细']); // 行4 表头
   rows.forEach(r=>{
-    const cls = r.type==='收入' ? 'income' : 'expense';
-    const amtStr = (r.type==='收入'?'+':'-')+money(r.amount);
-    html += '<tr>';
-    html += '<td>'+esc(fmtDate(r.date))+'</td>';
-    html += '<td>'+esc(r.type)+'</td>';
-    html += '<td>'+esc(r.source)+'</td>';
-    html += '<td>'+esc(r.remark)+'</td>';
-    html += '<td class="'+cls+'">'+amtStr+'</td>';
-    html += '<td>'+esc(r.account)+'</td>';
-    html += '<td>'+esc(r.detail)+'</td>';
-    html += '</tr>';
+    aoa.push([fmtDate(r.date), r.type, r.source, r.remark, (r.type==='收入'?'+':'-')+money(r.amount), r.account, r.detail]);
   });
-  // 合计行
-  html += '<tr class="totalrow"><td colspan="4">合计</td><td>'+money(totalSum)+'</td><td colspan="2">收入 '+money(incomeSum)+' / 支出 '+money(expenseSum)+'</td></tr>';
-  // 间隔
-  html += '<tr><td colspan="7" style="height:12px;"></td></tr>';
-  // 当前四账户余额
-  html += '<tr><td colspan="7" class="section">当前四账户余额</td></tr>';
+  aoa.push(['合计','','','', money(totalSum), '收入 '+money(incomeSum)+' / 支出 '+money(expenseSum), '']); // 合计行
+  aoa.push([]);                                                              // 空行
+  aoa.push(['当前四账户余额']);                                              // 余额标题
   ACCOUNTS.forEach(a=>{
     const cfg = ACC_MAP[a.key];
-    html += '<tr class="balrow"><td colspan="4">'+esc(cfg.name+'（'+cfg.desc+'）')+'</td><td colspan="2" class="income">'+money(DATA.accounts[a.key])+'</td><td></td></tr>';
+    aoa.push([cfg.name+'（'+cfg.desc+'）', money(DATA.accounts[a.key])]);
   });
-  html += '</table></body></html>';
 
-  // 下载（带 UTF-8 BOM 防止中文乱码）
-  const bom = '\uFEFF';
-  const blob = new Blob([bom+html], {type:'application/vnd.ms-excel;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = '四笔钱收支明细_'+nowMonth+'.xls';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url), 1000);
-  showToast('✅ 已导出 Excel（.xls，Excel/WPS 可直接打开）','success');
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  // 合并单元格：标题行 A1:G1, 副标题 A2:G2, 合计行, 余额标题行
+  const lastRowIdx = 3 + rows.length; // 合计行索引（0-based）
+  const balTitleIdx = lastRowIdx + 2;  // 余额标题行索引
+  ws['!merges'] = [
+    {s:{r:0,c:0}, e:{r:0,c:6}},  // A1:G1 标题
+    {s:{r:1,c:0}, e:{r:1,c:6}},  // A2:G2 副标题
+    {s:{r:lastRowIdx,c:0}, e:{r:lastRowIdx,c:3}},  // 合计行 A:E 左半
+    {s:{r:lastRowIdx,c:5}, e:{r:lastRowIdx,c:6}},   // 合计行 F:G 右半
+    {s:{r:balTitleIdx,c:0}, e:{r:balTitleIdx,c:6}}, // 余额标题 A:G
+  ];
+  // 余额行也合并 B:G
+  for(let i=0;i<ACCOUNTS.length;i++){
+    const r = balTitleIdx + 1 + i;
+    ws['!merges'].push({s:{r:r,c:1}, e:{r:r,c:6}});
+  }
+  // 列宽
+  ws['!cols'] = [{wch:18},{wch:6},{wch:14},{wch:26},{wch:12},{wch:14},{wch:32}];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '收支明细');
+  XLSX.writeFile(wb, '四笔钱收支明细_'+nowMonth+'.xlsx');
+  showToast('✅ 已导出 Excel（.xlsx，Excel/WPS 直接打开）','success');
 }
 function importData(file){
   const reader = new FileReader();
