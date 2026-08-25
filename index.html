@@ -2874,11 +2874,10 @@ function resetAlloc(){
 }
 
 /* ================== 导入导出/清空 ================== */
-// 导出为 Excel（SpreadsheetML 2003 XML 格式，Excel/WPS 直接打开，保留列宽/加粗/颜色）
+// 导出为 Excel（HTML table + .xls，Excel/WPS 直接打开，容错性极高，支持样式）
 function exportData(){
   // 准备数据：按时间正序（早→晚）
   const sorted = DATA.history.slice().sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
-  // 收入分组（账单式一行）
   const { groups, idToGroup } = groupIncomeTransactions(sorted);
   const renderedGroups = new Set();
   const rows = [];
@@ -2911,109 +2910,66 @@ function exportData(){
       detail: ''
     });
   }
-
-  // 计算：本月合计、本月支出合计、本月收入合计
   const nowMonth = getCurrentMonth();
   let incomeSum=0, expenseSum=0;
   rows.forEach(r=>{ if(r.type==='收入') incomeSum += (+r.amount||0); else expenseSum += (+r.amount||0); });
   const totalSum = incomeSum - expenseSum;
 
-  // 转字符串 + 转义 XML 特殊字符
   const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const fmtDate = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
                    + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
   const money = n => (+n||0).toFixed(2);
 
-  // 构造 Excel XML
-  const colWidths = [140, 56, 88, 220, 90, 110, 240];
-  // 标题行样式
-  const titleStyle = 's62" ss:Name="Title" ss:FontName="微软雅黑" ss:Size="16" ss:Bold="1" ss:Color="#1a1a2e"';
-  // 表头样式
-  const headStyle = 's71" ss:Name="Header" ss:FontName="微软雅黑" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF" ss:Interior ss:Color="#6b7fd4" ss:Pattern="Solid"';
-  // 收入行样式（绿色字）
-  const incomeStyle = 's81" ss:Name="IncomeRow" ss:FontName="微软雅黑" ss:Size="10" ss:Color="#0a8754"';
-  // 支出行样式（红色字）
-  const expenseStyle = 's82" ss:Name="ExpenseRow" ss:FontName="微软雅黑" ss:Size="10" ss:Color="#d9304a"';
-  // 合计行样式
-  const totalStyle = 's91" ss:Name="TotalRow" ss:FontName="微软雅黑" ss:Size="11" ss:Bold="1" ss:Color="#1a1a2e" ss:Interior ss:Color="#e8eaf6" ss:Pattern="Solid"';
-
-  let xml = '<?xml version="1.0" encoding="UTF-8"?>\r\n';
-  xml += '<?mso-application progid="Excel.Sheet"?>\r\n';
-  xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"\r\n';
-  xml += ' xmlns:o="urn:schemas-microsoft-com:office:office"\r\n';
-  xml += ' xmlns:x="urn:schemas-microsoft-com:office:excel"\r\n';
-  xml += ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"\r\n';
-  xml += ' xmlns:html="http://www.w3.org/TR/REC-html40">\r\n';
-  xml += '<Styles>\r\n';
-  xml += '  <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/><Font ss:FontName="微软雅黑" ss:Size="10"/></Style>\r\n';
-  xml += '  <Style ss:ID="s62"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>\r\n';
-  xml += '  <Style ss:ID="s71"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#6b7fd4"/></Borders></Style>\r\n';
-  xml += '  <Style ss:ID="s81"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#eee"/></Borders></Style>\r\n';
-  xml += '  <Style ss:ID="s82"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#eee"/></Borders></Style>\r\n';
-  xml += '  <Style ss:ID="s91"><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>\r\n';
-  xml += '</Styles>\r\n';
-  xml += '<Worksheet ss:Name="收支明细">\r\n';
-  xml += '<Table>\r\n';
-  // 列宽
-  colWidths.forEach(w=>{ xml += '<Column ss:Width="'+w+'"/>'; });
-  xml += '\r\n';
-  // 标题行（合并 7 列）
-  xml += '<Row ss:Height="32"><Cell ss:MergeAcross="6" ss:StyleID="s62"><Data ss:Type="String">四笔钱记账助手 · 收支明细（'+nowMonth+'）</Data></Cell></Row>\r\n';
-  // 副标题：生成时间
-  xml += '<Row><Cell ss:MergeAcross="6"><Data ss:Type="String">导出时间：'+fmtDate(new Date())+' · 共 '+rows.length+' 笔记录</Data></Cell></Row>\r\n';
-  xml += '<Row ss:Height="6"><Cell ss:MergeAcross="6"><Data ss:Type="String"> </Data></Cell></Row>\r\n';
+  // 构造 HTML table（.xls 伪格式，Excel/WPS 直接打开）
+  let html = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+  html += '<head><meta charset="utf-8"><style>';
+  html += 'table{border-collapse:collapse;width:100%;font-family:"微软雅黑",Arial,sans-serif;}';
+  html += 'td,th{border:1px solid #ddd;padding:6px 10px;font-size:11pt;}';
+  html += '.title{font-size:16pt;font-weight:bold;text-align:center;color:#1a1a2e;background:#f0f0f8;padding:10px;}';
+  html += '.subtitle{font-size:10pt;color:#666;text-align:center;background:#fafafa;}';
+  html += 'th{background:#6b7fd4;color:#fff;font-weight:bold;text-align:center;}';
+  html += '.income{color:#0a8754;}';
+  html += '.expense{color:#d9304a;}';
+  html += '.totalrow{background:#e8eaf6;font-weight:bold;color:#1a1a2e;}';
+  html += '.section{font-size:12pt;font-weight:bold;color:#6b7fd4;background:#f5f6fc;padding:8px;}';
+  html += '.balrow{background:#fafbff;}';
+  html += '</style></head><body>';
+  html += '<table>';
+  // 标题行
+  html += '<tr><td colspan="7" class="title">四笔钱记账助手 · 收支明细（'+esc(nowMonth)+'）</td></tr>';
+  html += '<tr><td colspan="7" class="subtitle">导出时间：'+esc(fmtDate(new Date()))+' · 共 '+rows.length+' 笔记录</td></tr>';
+  html += '<tr><td colspan="7" style="height:8px;"></td></tr>';
   // 表头
-  xml += '<Row ss:Height="24" ss:StyleID="s71">';
-  ['日期','类型','来源/账户','备注','金额(元)','四账户','分流明细'].forEach(h=>{
-    xml += '<Cell ss:StyleID="s71"><Data ss:Type="String">'+esc(h)+'</Data></Cell>';
-  });
-  xml += '</Row>\r\n';
+  html += '<tr><th>日期</th><th>类型</th><th>来源/账户</th><th>备注</th><th>金额(元)</th><th>四账户</th><th>分流明细</th></tr>';
   // 数据行
   rows.forEach(r=>{
-    const style = r.type==='收入' ? 's81' : 's82';
-    xml += '<Row ss:StyleID="'+style+'">';
-    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(fmtDate(r.date))+'</Data></Cell>';
-    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(r.type)+'</Data></Cell>';
-    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(r.source)+'</Data></Cell>';
-    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(r.remark)+'</Data></Cell>';
-    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="Number">'+money(r.amount)+'</Data></Cell>';
-    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(r.account)+'</Data></Cell>';
-    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(r.detail)+'</Data></Cell>';
-    xml += '</Row>\r\n';
+    const cls = r.type==='收入' ? 'income' : 'expense';
+    const amtStr = (r.type==='收入'?'+':'-')+money(r.amount);
+    html += '<tr>';
+    html += '<td>'+esc(fmtDate(r.date))+'</td>';
+    html += '<td>'+esc(r.type)+'</td>';
+    html += '<td>'+esc(r.source)+'</td>';
+    html += '<td>'+esc(r.remark)+'</td>';
+    html += '<td class="'+cls+'">'+amtStr+'</td>';
+    html += '<td>'+esc(r.account)+'</td>';
+    html += '<td>'+esc(r.detail)+'</td>';
+    html += '</tr>';
   });
   // 合计行
-  xml += '<Row ss:Height="26" ss:StyleID="s91">';
-  xml += '<Cell ss:StyleID="s91"><Data ss:Type="String">合计</Data></Cell>';
-  xml += '<Cell ss:StyleID="s91"/>';
-  xml += '<Cell ss:StyleID="s91"/>';
-  xml += '<Cell ss:StyleID="s91"/>';
-  xml += '<Cell ss:StyleID="s91"><Data ss:Type="Number">'+money(totalSum)+'</Data></Cell>';
-  xml += '<Cell ss:MergeAcross="2" ss:StyleID="s91"><Data ss:Type="String">收入 '+money(incomeSum)+' / 支出 '+money(expenseSum)+'</Data></Cell>';
-  xml += '</Row>\r\n';
+  html += '<tr class="totalrow"><td colspan="4">合计</td><td>'+money(totalSum)+'</td><td colspan="2">收入 '+money(incomeSum)+' / 支出 '+money(expenseSum)+'</td></tr>';
+  // 间隔
+  html += '<tr><td colspan="7" style="height:12px;"></td></tr>';
   // 当前四账户余额
-  xml += '<Row ss:Height="6"><Cell ss:MergeAcross="6"><Data ss:Type="String"> </Data></Cell></Row>\r\n';
-  xml += '<Row><Cell ss:MergeAcross="6" ss:StyleID="s91"><Data ss:Type="String">当前四账户余额</Data></Cell></Row>\r\n';
+  html += '<tr><td colspan="7" class="section">当前四账户余额</td></tr>';
   ACCOUNTS.forEach(a=>{
     const cfg = ACC_MAP[a.key];
-    xml += '<Row>';
-    xml += '<Cell ss:MergeAcross="3"><Data ss:Type="String">'+esc(cfg.name+'（'+cfg.desc+'）')+'</Data></Cell>';
-    xml += '<Cell ss:MergeAcross="2"><Data ss:Type="Number">'+money(DATA.accounts[a.key])+'</Data></Cell>';
-    xml += '</Row>\r\n';
+    html += '<tr class="balrow"><td colspan="4">'+esc(cfg.name+'（'+cfg.desc+'）')+'</td><td colspan="2" class="income">'+money(DATA.accounts[a.key])+'</td><td></td></tr>';
   });
-  xml += '</Table>\r\n';
-  xml += '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">\r\n';
-  xml += '  <Selected/>\r\n';
-  xml += '  <FreezePanes/>\r\n';
-  xml += '  <FrozenNoSplitHorizontal/>\r\n';
-  xml += '  <SplitHorizontal>5</SplitHorizontal>\r\n';
-  xml += '  <TopRowBottomPane>5</TopRowBottomPane>\r\n';
-  xml += '  <ActivePane>BottomPane</ActivePane>\r\n';
-  xml += '</WorksheetOptions>\r\n';
-  xml += '</Worksheet>\r\n';
-  xml += '</Workbook>\r\n';
+  html += '</table></body></html>';
 
-  // 下载
-  const blob = new Blob([xml], {type:'application/vnd.ms-excel;charset=utf-8'});
+  // 下载（带 UTF-8 BOM 防止中文乱码）
+  const bom = '\uFEFF';
+  const blob = new Blob([bom+html], {type:'application/vnd.ms-excel;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -3022,7 +2978,7 @@ function exportData(){
   a.click();
   document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url), 1000);
-  showToast('✅ 已导出 Excel（含格式与合计行）','success');
+  showToast('✅ 已导出 Excel（.xls，Excel/WPS 可直接打开）','success');
 }
 function importData(file){
   const reader = new FileReader();
