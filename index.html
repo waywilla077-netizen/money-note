@@ -941,10 +941,12 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
       </div>
       <div class="ai-advice-card">
         <div class="ai-advice-empty" id="aiAdviceEmpty">
-          <div style="font-size:28px;margin-bottom:8px;">🤖</div>
+          <div style="font-size:28px;margin-bottom:8px;color:var(--accent);">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="16" height="13" rx="2"/><circle cx="9" cy="13" r="1.2" fill="currentColor"/><circle cx="15" cy="13" r="1.2" fill="currentColor"/><path d="M9 6V4h6v2"/><path d="M12 19v2"/><path d="M8 21h8"/></svg>
+          </div>
           <div style="font-weight:600;margin-bottom:4px;">让 AI 帮你分析财务状况</div>
           <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">基于四账户余额、本月收支、历史记录，给出评价、风险提示和规划建议</div>
-          <button class="btn btn-primary" id="btnGenAdvice" style="margin:0;">🤖 生成理财建议</button>
+          <button class="btn btn-primary" id="btnGenAdvice" style="margin:0;">生成理财建议</button>
           <div class="sub" id="aiAdviceHint" style="font-size:12px;color:var(--text-muted);margin-top:8px;display:none;">需先在设置中配置 AI API Key</div>
         </div>
         <div class="ai-advice-result" id="aiAdviceResult" style="display:none;"></div>
@@ -1045,7 +1047,7 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
             </label>
             <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-weight:normal;">
               <input type="radio" name="ghProxy" value="proxy" style="margin-top:3px;">
-              <div><b>国内中转节点 ghproxy.net 🚀</b><div class="sub" style="font-size:12px;color:#666;margin-top:2px;">手机 4G/5G 不开代理首选，速度最快</div></div>
+              <div><b>国内中转节点 ghproxy.net</b><div class="sub" style="font-size:12px;color:#666;margin-top:2px;">手机 4G/5G 不开代理首选，速度最快</div></div>
             </label>
             <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-weight:normal;">
               <input type="radio" name="ghProxy" value="fallback" style="margin-top:3px;">
@@ -1134,7 +1136,7 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
 <div class="modal-mask" id="reassignModal">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">📝 重新分配账户</div>
+      <div class="modal-title">重新分配账户</div>
       <button class="modal-close" data-close="reassignModal">✕</button>
     </div>
     <div class="modal-body">
@@ -1178,7 +1180,7 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
 <div class="modal-mask" id="editModal">
   <div class="modal" style="border-radius:18px;max-width:460px;">
     <div class="modal-header">
-      <div class="modal-title">✏️ 编辑 / 删除记录</div>
+      <div class="modal-title">编辑 / 删除记录</div>
       <button class="modal-close" data-close="editModal">✕</button>
     </div>
     <div class="modal-body">
@@ -1209,7 +1211,7 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
       <div class="note-box" style="margin-top:6px;">修改金额/账户时，将自动回算四账户余额与本月收支统计；若改到其他月份，本月统计会还原到无该笔的状态，对应月份累计永久余额同步增减。</div>
     </div>
     <div class="modal-footer" style="justify-content:space-between;">
-      <button class="btn btn-danger" id="btnDeleteTx" style="margin:0;background:#ffe5e7;color:#d9304a;">🗑 删除该笔</button>
+      <button class="btn btn-danger" id="btnDeleteTx" style="margin:0;background:#ffe5e7;color:#d9304a;">删除该笔</button>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-secondary" data-close="editModal">取消</button>
         <button class="btn btn-primary" id="btnSaveEdit" style="margin:0;">保存修改</button>
@@ -1229,7 +1231,7 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
       <div id="allHistoryList" style="max-height:65vh;overflow-y:auto;"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="btnExportFromAll" style="margin:0;">📥 导出 Excel</button>
+      <button class="btn btn-secondary" id="btnExportFromAll" style="margin:0;">导出 Excel</button>
       <button class="btn btn-primary" data-close="allHistoryModal" style="margin:0;">关闭</button>
     </div>
   </div>
@@ -1860,7 +1862,7 @@ async function applyAiResult(ai){
     }
     if(Object.keys(patch).length===0){ showToast('AI：没有识别到要修改的字段','warning'); return false; }
     patchTransaction(tx.id, patch);
-    showToast('✅ AI 已修改该笔记录','success');
+    showToast('AI 已修改该笔记录','success');
     return true;
   }
   // add
@@ -1902,7 +1904,7 @@ async function applyAiResult(ai){
   }
   if(okCount>0){
     saveData(); renderAll();
-    showToast(`✅ AI 已记录 ${okCount} 笔`);
+    showToast(`AI 已记录 ${okCount} 笔`);
     return true;
   }
   return false;
@@ -2024,7 +2026,7 @@ function addIncome(incomeType, amount, remark){
   }
   saveData();
   renderAll();
-  showToast('✅ 已记录 '+incomeType+' 收入 ¥'+fmt(amount));
+  showToast('已记录 '+incomeType+' 收入 ¥'+fmt(amount));
   return true;
 }
 
@@ -2062,14 +2064,14 @@ async function handleInsufficientBalance(account, amount){
     if(DATA.accounts.social >= need){
       DATA.accounts.social = +(DATA.accounts.social - need).toFixed(2);
       DATA.accounts.improve = +(DATA.accounts.improve + need).toFixed(2);
-      showToast('✅ 已从快乐社交挪用 ¥'+fmt(need)+' 至悦己提升','success');
+      showToast('已从快乐社交挪用 ¥'+fmt(need)+' 至悦己提升','success');
       return true;
     } else {
       // 快乐也不够，把快乐全部挪过来，剩余允许负数
       const moved = DATA.accounts.social;
       DATA.accounts.social = 0;
       DATA.accounts.improve = +(DATA.accounts.improve + moved).toFixed(2);
-      showToast('⚠️ 快乐社交余额仅 ¥'+fmt(moved)+'，已全部挪用，悦己提升仍可能为负','warning');
+      showToast('快乐社交余额仅 ¥'+fmt(moved)+'，已全部挪用，悦己提升仍可能为负','warning');
       return true;
     }
   }
@@ -2078,7 +2080,7 @@ async function handleInsufficientBalance(account, amount){
     return ok;
   }
   if(account==='reserve'){
-    const ok = await showConfirm('<span class="danger">⚠️ 风险储备严禁挪用！</span><br>「风险储备」余额不足（差 ¥'+fmt(need)+'）。这是应对极端情况的最后防线，是否仍要记录？余额将为负。','风险警告','仍要记录');
+    const ok = await showConfirm('<span class="danger">风险储备严禁挪用</span><br>「风险储备」余额不足（差 ¥'+fmt(need)+'）。这是应对极端情况的最后防线，是否仍要记录？余额将为负。','风险警告','仍要记录');
     return ok;
   }
   return true;
@@ -2131,7 +2133,7 @@ function buildFinancialSummary(){
 二、本月收支：
 - 本月收入：¥${fmt(monthIncome)}
 - 本月支出：¥${fmt(monthExpense)}
-- 本月结余：¥${fmt(monthNet)} ${monthNet>=0?'（盈余）':'（赤字⚠️）'}
+- 本月结余：¥${fmt(monthNet)} ${monthNet>=0?'（盈余）':'（赤字）'}
 
 三、本月各账户支出明细：
 - 生存底线支出：¥${fmt(expenseByAcc.survival)}
@@ -2185,7 +2187,7 @@ async function generateFinancialAdvice(){
   const result = document.getElementById('aiAdviceResult');
   empty.style.display = 'none';
   result.style.display = '';
-  result.innerHTML = '<div class="ai-advice-loading"><div style="margin-bottom:8px;">🤖 AI 正在分析你的财务状况</div><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+  result.innerHTML = '<div class="ai-advice-loading"><div style="margin-bottom:8px;">AI 正在分析你的财务状况</div><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
 
   const summary = buildFinancialSummary();
   const systemPrompt = '你是一个专业的研究生理财顾问。请根据用户的四笔钱账户收支数据，给出专业、亲切、实用的理财建议。用 Markdown 格式回答。';
@@ -2222,8 +2224,8 @@ async function generateFinancialAdvice(){
       <div class="advice-section" id="adviceSummary">${summaryHtml}</div>
       ${hasMore ? '<div class="advice-section" id="adviceFull" style="display:none;">'+fullHtml+'</div>' : ''}
       <div style="display:flex;gap:8px;margin-top:12px;">
-        ${hasMore ? '<button class="btn btn-secondary" id="btnToggleAdvice" style="margin:0;">📖 展开全文</button>' : ''}
-        <button class="btn btn-secondary" id="btnRegenAdvice" style="margin:0;">🔄 重新生成</button>
+        ${hasMore ? '<button class="btn btn-secondary" id="btnToggleAdvice" style="margin:0;">展开全文</button>' : ''}
+        <button class="btn btn-secondary" id="btnRegenAdvice" style="margin:0;">重新生成</button>
       </div>`;
     const toggleBtn = document.getElementById('btnToggleAdvice');
     if(toggleBtn){
@@ -2231,13 +2233,13 @@ async function generateFinancialAdvice(){
         const full = document.getElementById('adviceFull');
         const isHidden = full.style.display === 'none';
         full.style.display = isHidden ? '' : 'none';
-        toggleBtn.textContent = isHidden ? '📕 收起全文' : '📖 展开全文';
+        toggleBtn.textContent = isHidden ? '收起全文' : '展开全文';
       });
     }
     document.getElementById('btnRegenAdvice').addEventListener('click', generateFinancialAdvice);
   }catch(e){
     const resultDiv = document.getElementById('aiAdviceResult');
-    resultDiv.innerHTML = '<div class="advice-section"><p>❌ 生成失败：'+(e.message||'未知错误')+'</p><p style="color:var(--text-muted);font-size:13px;">请检查 AI 配置或网络后重试。</p></div><button class="btn btn-secondary" id="btnRegenAdvice" style="margin-top:12px;">🔄 重新生成</button>';
+    resultDiv.innerHTML = '<div class="advice-section"><p>生成失败：'+(e.message||'未知错误')+'</p><p style="color:var(--text-muted);font-size:13px;">请检查 AI 配置或网络后重试。</p></div><button class="btn btn-secondary" id="btnRegenAdvice" style="margin-top:12px;">重新生成</button>';
     document.getElementById('btnRegenAdvice').addEventListener('click', generateFinancialAdvice);
   }
 }
@@ -2307,7 +2309,7 @@ function deleteTransaction(id){
   }
   DATA.history.splice(idx,1);
   saveData(); renderAll();
-  showToast('✅ 已删除该笔记录','success');
+  showToast('已删除该笔记录','success');
 }
 
 // 时间戳周期（YYYY-MM）判断
@@ -2360,7 +2362,7 @@ function deleteIncomeGroup(groupKey){
     if(idx>=0) DATA.history.splice(idx,1);
   }
   saveData(); renderAll();
-  showToast('✅ 已删除该笔收入（含 '+ids.length+' 条分流记录）','success');
+  showToast('已删除该笔收入（含 '+ids.length+' 条分流记录）','success');
 }
 
 // 保存编辑后的整笔收入组（重算四账户分流 + 新旧差额回算）
@@ -2425,7 +2427,7 @@ function saveIncomeGroupEdit({groupKey, newTotal, newIncomeType, newRemark, newD
     const idx = DATA.history.findIndex(h=>h.id===oldId); if(idx>=0) DATA.history.splice(idx,1);
   }
   saveData(); renderAll();
-  showToast('✅ 已更新该笔收入（'+ids.length+'→'+(accs.filter(a=>parts[a]>0).length)+' 条分流重算）','success');
+  showToast('已更新该笔收入（'+ids.length+'→'+(accs.filter(a=>parts[a]>0).length)+' 条分流重算）','success');
   return true;
 }
 
@@ -2438,7 +2440,7 @@ function openEditGroup(groupKey){
   editGroupKey = groupKey;
   editTargetId = null; // 表示当前不是单条编辑模式
   // 总金额
-  document.getElementById('editTypeText').innerHTML = '📥 收入（整笔编辑）<div class="sub" style="font-size:12px;color:#888;font-weight:400;margin-top:4px;">该笔收入共 '+g.items.length+' 条分流记录，编辑总金额将按分配比例重算四账户</div>';
+  document.getElementById('editTypeText').innerHTML = '收入（整笔编辑）<div class="sub" style="font-size:12px;color:#888;font-weight:400;margin-top:4px;">该笔收入共 '+g.items.length+' 条分流记录，编辑总金额将按分配比例重算四账户</div>';
   document.getElementById('editAmount').value = g.totalAmount;
   document.getElementById('editRemark').value = g.remark || '';
   const d = new Date(g.timestamp);
@@ -2519,7 +2521,7 @@ async function handleSmartInput(){
   const matched = matchExpenseAccount(text);
   const ruleUncertain = (amount<=0) || (intent==='unknown' && !detectIncomeType(text)) || (matched.length>1) || /昨天|前天|大前天|刚才|最近|AA|平摊|拆分|分/.test(text);
   if(aiReady() && (aiAlways || ruleUncertain)){
-    showToast('🤖 AI 正在识别…（可随时点右上角 × 取消）','info');
+    showToast('AI 正在识别…（可随时点右上角 × 取消）','info');
     const ai = await aiParseText(text);
     if(ai){
       const ok = await applyAiResult(ai);
@@ -2570,7 +2572,7 @@ function showMatchConfirm(defaultAcc, amount, remark, matchedList){
         closeModal('matchModal');
         const ok = await addExpense(key, amount, remark);
         if(ok){
-          showToast('✅ 已记录支出 ¥'+fmt(amount)+' → '+acc.name,'success');
+          showToast('已记录支出 ¥'+fmt(amount)+' → '+acc.name,'success');
           document.getElementById('smartInput').value='';
         }
         resolve();
@@ -2667,7 +2669,7 @@ function renderHistory(){
           <div class="hist-body">
             <div class="hist-remark">${g.remark || (g.incomeType||'收入')+'到账'}</div>
             <div class="hist-meta">
-              <span class="hist-tag" style="background:linear-gradient(135deg,#6b7fd4,#8ab3b3);">📥 ${g.incomeType||'收入'} · 含${g.items.length}条分流</span>
+              <span class="hist-tag" style="background:linear-gradient(135deg,#6b7fd4,#8ab3b3);">${g.incomeType||'收入'} · 含${g.items.length}条分流</span>
               <span>${fmtTime(g.timestamp)}</span>
             </div>
             <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${accMini}</div>
@@ -2772,7 +2774,7 @@ function renderAllHistoryList(){
           <div class="hist-body">
             <div class="hist-remark">${g.remark || (g.incomeType||'收入')+'到账'}</div>
             <div class="hist-meta">
-              <span class="hist-tag" style="background:linear-gradient(135deg,#6b7fd4,#8ab3b3);">📥 ${g.incomeType||'收入'} · 含${g.items.length}条分流</span>
+              <span class="hist-tag" style="background:linear-gradient(135deg,#6b7fd4,#8ab3b3);">${g.incomeType||'收入'} · 含${g.items.length}条分流</span>
               <span>${fmtTime(g.timestamp)}</span>
             </div>
             <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${accMini}</div>
@@ -2815,7 +2817,7 @@ function openEditTx(id){
   if(!tx) return;
   editTargetId = id;
   editPickedAccount = tx.account;
-  document.getElementById('editTypeText').textContent = (tx.type==='income'?'📥 收入（会按来源规则分流，编辑仅调整单条分流记录）':'📤 支出') + ' · id:'+id.slice(0,8);
+  document.getElementById('editTypeText').textContent = (tx.type==='income'?'收入（会按来源规则分流，编辑仅调整单条分流记录）':'支出') + ' · id:'+id.slice(0,8);
   document.getElementById('editAmount').value = tx.amount;
   document.getElementById('editRemark').value = tx.remark || '';
   const d = new Date(tx.timestamp);
@@ -3048,7 +3050,7 @@ function saveAlloc(){
   saveData();
   renderScheme();
   closeModal('settingsModal');
-  showToast('✅ 分配比例已保存','success');
+  showToast('分配比例已保存','success');
 }
 function resetAlloc(){
   renderAllocTable();
@@ -3174,7 +3176,7 @@ async function exportData(){
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '收支明细');
   XLSX.writeFile(wb, '四笔钱收支明细_'+nowMonth+'.xlsx');
-  showToast('✅ 已导出 Excel（.xlsx，Excel/WPS 直接打开）','success');
+  showToast('已导出 Excel（.xlsx，Excel/WPS 直接打开）','success');
 }
 function importData(file){
   const reader = new FileReader();
@@ -3192,7 +3194,7 @@ function importData(file){
       checkMonthlyReset();
       saveData();
       renderAll();
-      showToast('✅ 数据导入成功','success');
+      showToast('数据导入成功','success');
     }catch(err){
       showToast('导入失败：'+err.message,'error');
     }
@@ -3202,7 +3204,7 @@ function importData(file){
 async function clearAllData(){
   const ok1 = await showConfirm('确定要清空所有数据吗？此操作不可恢复！','清空确认','确定清空');
   if(!ok1) return;
-  const ok2 = await showConfirm('<span class="danger">⚠️ 再次确认：所有账户余额、历史记录、自定义规则都将被永久删除！</span>','二次确认','永久删除');
+  const ok2 = await showConfirm('<span class="danger">再次确认：所有账户余额、历史记录、自定义规则都将被永久删除</span>','二次确认','永久删除');
   if(!ok2) return;
   DATA = defaultData();
   saveData();
@@ -3253,7 +3255,7 @@ function bindEvents(){
     if(ok){
       document.getElementById('manualExpenseAmount').value='';
       document.getElementById('manualExpenseRemark').value='';
-      showToast('✅ 已记录支出 ¥'+fmt(amt)+' → '+ACC_MAP[acc].name,'success');
+      showToast('已记录支出 ¥'+fmt(amt)+' → '+ACC_MAP[acc].name,'success');
     }
   });
   document.getElementById('btnSaveAlloc').addEventListener('click', saveAlloc);
@@ -3286,7 +3288,7 @@ function bindEvents(){
     const always = document.getElementById('aiAlwaysInput').checked;
     saveAiConfig({base, key, model, always});
     renderAiConfigUI();
-    showToast('✅ AI 配置已保存。规则识别不确定时会自动调用 '+ (model||AI_MODEL_DEFAULT),'success');
+    showToast('AI 配置已保存。规则识别不确定时会自动调用 '+ (model||AI_MODEL_DEFAULT),'success');
   });
   document.getElementById('btnClearAiKey').addEventListener('click', ()=>{
     saveAiConfig({key:''});
@@ -3300,10 +3302,10 @@ function bindEvents(){
     const model = selectedAiModel();
     saveAiConfig({base, key, model});
     if(!aiReady()){ showToast('请先填 API Key','error'); return; }
-    showToast('🤖 正在测试 AI 调用…','info');
+    showToast('正在测试 AI 调用…','info');
     const r = await aiParseText('测试识别一句话：午餐花了28元');
-    if(r && (r.entries||r.edit)) showToast('✅ AI 连通正常，识别结果：'+JSON.stringify(r).slice(0,120),'success');
-    else showToast('❌ AI 调用失败，请检查 Base/Key/模型/网络（国内网络可尝试选中转节点或 VPN）','error');
+    if(r && (r.entries||r.edit)) showToast('AI 连通正常，识别结果：'+JSON.stringify(r).slice(0,120),'success');
+    else showToast('AI 调用失败，请检查 Base/Key/模型/网络（国内网络可尝试选中转节点或 VPN）','error');
   });
   // 编辑 Modal：保存 / 删除
   document.getElementById('btnSaveEdit').addEventListener('click', ()=>{
@@ -3337,7 +3339,7 @@ function bindEvents(){
     }
     patchTransaction(editTargetId, patch);
     closeModal('editModal');
-    showToast('✅ 已保存修改','success');
+    showToast('已保存修改','success');
   });
   document.getElementById('btnDeleteTx').addEventListener('click', async ()=>{
     if(editGroupKey){
@@ -3378,7 +3380,7 @@ else updateSyncStatus(navigator.onLine ? 'pending' : 'offline');
 
 // 启动时从云端拉取最新数据（没配置 Token 则跳过；失败也不影响本地使用）
 if(ghToken) syncFromCloud().catch(e=>console.log('启动同步失败', e));
-else setTimeout(()=>{ if(!ghToken) showToast('💡 设置里填入 GitHub Token（仅勾 gist）即可启用手机/电脑跨端同步','success'); }, 800);
+else setTimeout(()=>{ if(!ghToken) showToast('设置里填入 GitHub Token（仅勾 gist）即可启用手机/电脑跨端同步','success'); }, 800);
 
 // 网络恢复时自动同步（无 Token 不触发云端动作）
 window.addEventListener('online', ()=>{
