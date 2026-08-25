@@ -2211,10 +2211,33 @@ async function generateFinancialAdvice(){
     const j = await r.json();
     let content = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '';
     if(!content) throw new Error('AI 返回为空');
-    result.innerHTML = '<div class="advice-section">'+mdToHtml(content)+'</div><button class="btn btn-secondary" id="btnRegenAdvice" style="margin-top:12px;">🔄 重新生成</button>';
+    // 按段落分割，摘要取前 2 段
+    const paragraphs = content.split(/\n\n+/).filter(p=>p.trim());
+    const summaryText = paragraphs.slice(0,2).join('\n\n');
+    const hasMore = paragraphs.length > 2;
+    const fullHtml = mdToHtml(content);
+    const summaryHtml = mdToHtml(summaryText);
+    const resultDiv = document.getElementById('aiAdviceResult');
+    resultDiv.innerHTML = `
+      <div class="advice-section" id="adviceSummary">${summaryHtml}</div>
+      ${hasMore ? '<div class="advice-section" id="adviceFull" style="display:none;">'+fullHtml+'</div>' : ''}
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        ${hasMore ? '<button class="btn btn-secondary" id="btnToggleAdvice" style="margin:0;">📖 展开全文</button>' : ''}
+        <button class="btn btn-secondary" id="btnRegenAdvice" style="margin:0;">🔄 重新生成</button>
+      </div>`;
+    const toggleBtn = document.getElementById('btnToggleAdvice');
+    if(toggleBtn){
+      toggleBtn.addEventListener('click', ()=>{
+        const full = document.getElementById('adviceFull');
+        const isHidden = full.style.display === 'none';
+        full.style.display = isHidden ? '' : 'none';
+        toggleBtn.textContent = isHidden ? '📕 收起全文' : '📖 展开全文';
+      });
+    }
     document.getElementById('btnRegenAdvice').addEventListener('click', generateFinancialAdvice);
   }catch(e){
-    result.innerHTML = '<div class="advice-section"><p>❌ 生成失败：'+(e.message||'未知错误')+'</p><p style="color:var(--text-muted);font-size:13px;">请检查 AI 配置或网络后重试。</p></div><button class="btn btn-secondary" id="btnRegenAdvice" style="margin-top:12px;">🔄 重新生成</button>';
+    const resultDiv = document.getElementById('aiAdviceResult');
+    resultDiv.innerHTML = '<div class="advice-section"><p>❌ 生成失败：'+(e.message||'未知错误')+'</p><p style="color:var(--text-muted);font-size:13px;">请检查 AI 配置或网络后重试。</p></div><button class="btn btn-secondary" id="btnRegenAdvice" style="margin-top:12px;">🔄 重新生成</button>';
     document.getElementById('btnRegenAdvice').addEventListener('click', generateFinancialAdvice);
   }
 }
