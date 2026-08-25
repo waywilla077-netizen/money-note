@@ -462,6 +462,20 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
   box-shadow:var(--shadow);
   border:1px solid var(--border);
 }
+.show-all-btn{
+  margin-top:8px;
+  padding:14px;
+  text-align:center;
+  font-size:14px;
+  font-weight:600;
+  color:var(--accent);
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:14px;
+  cursor:pointer;
+  transition:all .2s;
+}
+.show-all-btn:active{ transform:scale(0.98); background:rgba(107,127,212,0.08); }
 .history-item{
   display:flex;
   align-items:center;
@@ -1153,6 +1167,23 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
         <button class="btn btn-secondary" data-close="editModal">取消</button>
         <button class="btn btn-primary" id="btnSaveEdit" style="margin:0;">保存修改</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- All History Modal -->
+<div class="modal-mask" id="allHistoryModal">
+  <div class="modal" style="border-radius:18px;max-width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">📋 全部收支明细（按时间倒序）</div>
+      <button class="modal-close" data-close="allHistoryModal">✕</button>
+    </div>
+    <div class="modal-body" style="padding:8px 4px 8px 12px;">
+      <div id="allHistoryList" style="max-height:65vh;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="btnExportFromAll" style="margin:0;">📥 导出 Excel</button>
+      <button class="btn btn-primary" data-close="allHistoryModal" style="margin:0;">关闭</button>
     </div>
   </div>
 </div>
@@ -2413,8 +2444,9 @@ function renderAccounts(){
 }
 function renderHistory(){
   const list = document.getElementById('historyList');
-  const hist = DATA.history.slice().reverse().slice(0,50);
-  if(hist.length===0){
+  const all = DATA.history.slice().reverse();
+  const hist = all.slice(0,5);
+  if(all.length===0){
     list.innerHTML = '<div class="empty-state"><div class="icon" style="color:#a8acbf;">'+ICONS.empty+'</div>暂无记录<br>快开始你的第一笔记账吧</div>';
     return;
   }
@@ -2423,16 +2455,119 @@ function renderHistory(){
   // 对收入记录做分组（账单式一行）
   const { groups, idToGroup } = groupIncomeTransactions(DATA.history);
   const renderedGroups = new Set();
-  for(const h of hist){
+  const appendItem = h=>{
     const isIncome = h.type==='income';
-    // 如果是收入分流记录：看它所在的组是否已经渲染过；跳过重复子记录，只渲染一次组行
+    if(isIncome){
+      const gkey = idToGroup.get(h.id);
+      if(gkey){
+        if(renderedGroups.has(gkey)) return;
+        renderedGroups.add(gkey);
+        const g = groups.get(gkey);
+        const accMini = Object.keys(g.accounts||{}).sort((a,b)=>(g.accounts[b]||0)-(g.accounts[a]||0)).slice(0,4).map(a=>{
+          const c = ACC_MAP[a]; return `<span class="hist-tag" style="background:${c.color}22;color:${c.color};border:1px solid ${c.color}33;">${c.name} ¥${fmt(g.accounts[a]||0)}</span>`;
+        }).join(' ');
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `
+          <div class="hist-icon" style="color:var(--accent);">${ICONS.money}</div>
+          <div class="hist-body">
+            <div class="hist-remark">${g.remark || (g.incomeType||'收入')+'到账'}</div>
+            <div class="hist-meta">
+              <span class="hist-tag" style="background:linear-gradient(135deg,#6b7fd4,#8ab3b3);">📥 ${g.incomeType||'收入'} · 含${g.items.length}条分流</span>
+              <span>${fmtTime(g.timestamp)}</span>
+            </div>
+            <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${accMini}</div>
+          </div>
+          <div class="hist-amount income" style="font-weight:800;">+¥${fmt(g.totalAmount)}</div>
+          <button class="hist-edit" data-group="${gkey}" title="编辑整笔收入" style="color:var(--text-muted);">${ICONS.edit}</button>
+          <button class="hist-delete" data-group="${gkey}" title="删除整笔收入">${DEL_ICON}</button>
+        `;
+        list.appendChild(item);
+        return;
+      }
+    }
+    // 支出（或独立收入）：单条一行
+    const acc = ACC_MAP[h.account];
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <div class="hist-icon" style="color:${acc.color};">${acc.icon}</div>
+      <div class="hist-body">
+        <div class="hist-remark">${h.remark||acc.name}</div>
+        <div class="hist-meta">
+          <span class="hist-tag" style="background:${acc.color};">${acc.name}</span>
+          <span>${fmtTime(h.timestamp)}</span>
+          ${isIncome && h.incomeType ? '<span>· '+h.incomeType+'</span>':''}
+        </div>
+      </div>
+      <div class="hist-amount ${isIncome?'income':'expense'}">${isIncome?'+':'-'}¥${fmt(h.amount)}</div>
+      <button class="hist-edit" data-id="${h.id}" title="编辑" style="color:var(--text-muted);">${ICONS.edit}</button>
+      <button class="hist-delete" data-id="${h.id}" title="删除">${DEL_ICON}</button>
+    `;
+    list.appendChild(item);
+  };
+  // 只渲染最近 5 条
+  hist.forEach(appendItem);
+  // 绑定事件（单条 + 组）
+  bindHistoryEvents(list);
+  // 先移除可能残留的"查看全部"按钮
+  const oldBtn = document.getElementById('btnShowAllHistory');
+  if(oldBtn) oldBtn.remove();
+  // 「查看全部」按钮
+  if(all.length > 5){
+    const more = document.createElement('div');
+    more.className = 'show-all-btn';
+    more.innerHTML = `📋 查看全部明细（共 ${all.length} 条，按时间倒序）→`;
+    more.id = 'btnShowAllHistory';
+    more.addEventListener('click', openAllHistory);
+    list.parentElement.appendChild(more);
+  }
+}
+function bindHistoryEvents(scope){
+  const DEL_ICON = '';
+  scope.querySelectorAll('.hist-edit[data-id]').forEach(btn=>{
+    btn.addEventListener('click', ()=>openEditTx(btn.dataset.id));
+  });
+  scope.querySelectorAll('.hist-delete[data-id]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const ok = await showConfirm('确定要删除该笔记录吗？四账户余额与本月统计会同步回算。','删除记录','确定删除');
+      if(ok) deleteTransaction(btn.dataset.id);
+    });
+  });
+  scope.querySelectorAll('.hist-edit[data-group]').forEach(btn=>{
+    btn.addEventListener('click', ()=>openEditGroup(btn.dataset.group));
+  });
+  scope.querySelectorAll('.hist-delete[data-group]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const ok = await showConfirm('确定删除该笔整收入吗？四账户分流记录都会删除，并回算余额与本月统计。','删除整笔收入','确定删除');
+      if(ok) deleteIncomeGroup(btn.dataset.group);
+    });
+  });
+}
+/* ================== 全部明细 Modal ================== */
+function openAllHistory(){
+  renderAllHistoryList();
+  openModal('allHistoryModal');
+}
+function renderAllHistoryList(){
+  const list = document.getElementById('allHistoryList');
+  const all = DATA.history.slice().reverse();
+  if(all.length===0){
+    list.innerHTML = '<div class="empty-state"><div class="icon" style="color:#a8acbf;">'+ICONS.empty+'</div>暂无记录</div>';
+    return;
+  }
+  list.innerHTML = '';
+  const DEL_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"></path><path d="M10 11v6M14 11v6M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>';
+  const { groups, idToGroup } = groupIncomeTransactions(DATA.history);
+  const renderedGroups = new Set();
+  for(const h of all){
+    const isIncome = h.type==='income';
     if(isIncome){
       const gkey = idToGroup.get(h.id);
       if(gkey){
         if(renderedGroups.has(gkey)) continue;
         renderedGroups.add(gkey);
         const g = groups.get(gkey);
-        // 组行：显示总金额 + 收入来源 tag + 账户明细小 tag
         const accMini = Object.keys(g.accounts||{}).sort((a,b)=>(g.accounts[b]||0)-(g.accounts[a]||0)).slice(0,4).map(a=>{
           const c = ACC_MAP[a]; return `<span class="hist-tag" style="background:${c.color}22;color:${c.color};border:1px solid ${c.color}33;">${c.name} ¥${fmt(g.accounts[a]||0)}</span>`;
         }).join(' ');
@@ -2455,9 +2590,7 @@ function renderHistory(){
         list.appendChild(item);
         continue;
       }
-      // 非组内的孤立项（理论不会有），仍按单条渲染
     }
-    // 支出（或独立收入）：单条一行
     const acc = ACC_MAP[h.account];
     const item = document.createElement('div');
     item.className = 'history-item';
@@ -2477,26 +2610,7 @@ function renderHistory(){
     `;
     list.appendChild(item);
   }
-  // 事件：单条编辑/删除
-  list.querySelectorAll('.hist-edit[data-id]').forEach(btn=>{
-    btn.addEventListener('click', ()=>openEditTx(btn.dataset.id));
-  });
-  list.querySelectorAll('.hist-delete[data-id]').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const ok = await showConfirm('确定要删除该笔记录吗？四账户余额与本月统计会同步回算。','删除记录','确定删除');
-      if(ok) deleteTransaction(btn.dataset.id);
-    });
-  });
-  // 事件：组（整笔收入）编辑/删除
-  list.querySelectorAll('.hist-edit[data-group]').forEach(btn=>{
-    btn.addEventListener('click', ()=>openEditGroup(btn.dataset.group));
-  });
-  list.querySelectorAll('.hist-delete[data-group]').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const ok = await showConfirm('确定删除该笔整收入吗？四账户分流记录都会删除，并回算余额与本月统计。','删除整笔收入','确定删除');
-      if(ok) deleteIncomeGroup(btn.dataset.group);
-    });
-  });
+  bindHistoryEvents(list);
 }
 
 /* ================== 编辑交易 Modal 控制 ================== */
@@ -2760,15 +2874,155 @@ function resetAlloc(){
 }
 
 /* ================== 导入导出/清空 ================== */
+// 导出为 Excel（SpreadsheetML 2003 XML 格式，Excel/WPS 直接打开，保留列宽/加粗/颜色）
 function exportData(){
-  const blob = new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  // 准备数据：按时间正序（早→晚）
+  const sorted = DATA.history.slice().sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
+  // 收入分组（账单式一行）
+  const { groups, idToGroup } = groupIncomeTransactions(sorted);
+  const renderedGroups = new Set();
+  const rows = [];
+  for(const h of sorted){
+    if(h.type==='income'){
+      const gkey = idToGroup.get(h.id);
+      if(gkey){
+        if(renderedGroups.has(gkey)) continue;
+        renderedGroups.add(gkey);
+        const g = groups.get(gkey);
+        rows.push({
+          date: new Date(g.timestamp),
+          type: '收入',
+          source: g.incomeType || '收入',
+          remark: g.remark || (g.incomeType||'')+'到账',
+          account: '四账户分流',
+          amount: g.totalAmount,
+          detail: Object.keys(g.accounts||{}).map(a=>ACC_MAP[a].name+' '+fmt(g.accounts[a]||0)).join(' / ')
+        });
+        continue;
+      }
+    }
+    rows.push({
+      date: new Date(h.timestamp),
+      type: h.type==='income'?'收入':'支出',
+      source: h.incomeType || ACC_MAP[h.account].name,
+      remark: h.remark || ACC_MAP[h.account].name,
+      account: ACC_MAP[h.account].name,
+      amount: h.amount,
+      detail: ''
+    });
+  }
+
+  // 计算：本月合计、本月支出合计、本月收入合计
+  const nowMonth = getCurrentMonth();
+  let incomeSum=0, expenseSum=0;
+  rows.forEach(r=>{ if(r.type==='收入') incomeSum += (+r.amount||0); else expenseSum += (+r.amount||0); });
+  const totalSum = incomeSum - expenseSum;
+
+  // 转字符串 + 转义 XML 特殊字符
+  const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const fmtDate = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
+                   + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  const money = n => (+n||0).toFixed(2);
+
+  // 构造 Excel XML
+  const colWidths = [140, 56, 88, 220, 90, 110, 240];
+  // 标题行样式
+  const titleStyle = 's62" ss:Name="Title" ss:FontName="微软雅黑" ss:Size="16" ss:Bold="1" ss:Color="#1a1a2e"';
+  // 表头样式
+  const headStyle = 's71" ss:Name="Header" ss:FontName="微软雅黑" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF" ss:Interior ss:Color="#6b7fd4" ss:Pattern="Solid"';
+  // 收入行样式（绿色字）
+  const incomeStyle = 's81" ss:Name="IncomeRow" ss:FontName="微软雅黑" ss:Size="10" ss:Color="#0a8754"';
+  // 支出行样式（红色字）
+  const expenseStyle = 's82" ss:Name="ExpenseRow" ss:FontName="微软雅黑" ss:Size="10" ss:Color="#d9304a"';
+  // 合计行样式
+  const totalStyle = 's91" ss:Name="TotalRow" ss:FontName="微软雅黑" ss:Size="11" ss:Bold="1" ss:Color="#1a1a2e" ss:Interior ss:Color="#e8eaf6" ss:Pattern="Solid"';
+
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\r\n';
+  xml += '<?mso-application progid="Excel.Sheet"?>\r\n';
+  xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"\r\n';
+  xml += ' xmlns:o="urn:schemas-microsoft-com:office:office"\r\n';
+  xml += ' xmlns:x="urn:schemas-microsoft-com:office:excel"\r\n';
+  xml += ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"\r\n';
+  xml += ' xmlns:html="http://www.w3.org/TR/REC-html40">\r\n';
+  xml += '<Styles>\r\n';
+  xml += '  <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/><Font ss:FontName="微软雅黑" ss:Size="10"/></Style>\r\n';
+  xml += '  <Style ss:ID="s62"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>\r\n';
+  xml += '  <Style ss:ID="s71"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#6b7fd4"/></Borders></Style>\r\n';
+  xml += '  <Style ss:ID="s81"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#eee"/></Borders></Style>\r\n';
+  xml += '  <Style ss:ID="s82"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#eee"/></Borders></Style>\r\n';
+  xml += '  <Style ss:ID="s91"><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>\r\n';
+  xml += '</Styles>\r\n';
+  xml += '<Worksheet ss:Name="收支明细">\r\n';
+  xml += '<Table>\r\n';
+  // 列宽
+  colWidths.forEach(w=>{ xml += '<Column ss:Width="'+w+'"/>'; });
+  xml += '\r\n';
+  // 标题行（合并 7 列）
+  xml += '<Row ss:Height="32"><Cell ss:MergeAcross="6" ss:StyleID="s62"><Data ss:Type="String">四笔钱记账助手 · 收支明细（'+nowMonth+'）</Data></Cell></Row>\r\n';
+  // 副标题：生成时间
+  xml += '<Row><Cell ss:MergeAcross="6"><Data ss:Type="String">导出时间：'+fmtDate(new Date())+' · 共 '+rows.length+' 笔记录</Data></Cell></Row>\r\n';
+  xml += '<Row ss:Height="6"><Cell ss:MergeAcross="6"><Data ss:Type="String"> </Data></Cell></Row>\r\n';
+  // 表头
+  xml += '<Row ss:Height="24" ss:StyleID="s71">';
+  ['日期','类型','来源/账户','备注','金额(元)','四账户','分流明细'].forEach(h=>{
+    xml += '<Cell ss:StyleID="s71"><Data ss:Type="String">'+esc(h)+'</Data></Cell>';
+  });
+  xml += '</Row>\r\n';
+  // 数据行
+  rows.forEach(r=>{
+    const style = r.type==='收入' ? 's81' : 's82';
+    xml += '<Row ss:StyleID="'+style+'">';
+    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(fmtDate(r.date))+'</Data></Cell>';
+    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(r.type)+'</Data></Cell>';
+    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(r.source)+'</Data></Cell>';
+    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(r.remark)+'</Data></Cell>';
+    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="Number">'+money(r.amount)+'</Data></Cell>';
+    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(r.account)+'</Data></Cell>';
+    xml += '<Cell ss:StyleID="'+style+'"><Data ss:Type="String">'+esc(r.detail)+'</Data></Cell>';
+    xml += '</Row>\r\n';
+  });
+  // 合计行
+  xml += '<Row ss:Height="26" ss:StyleID="s91">';
+  xml += '<Cell ss:StyleID="s91"><Data ss:Type="String">合计</Data></Cell>';
+  xml += '<Cell ss:StyleID="s91"/>';
+  xml += '<Cell ss:StyleID="s91"/>';
+  xml += '<Cell ss:StyleID="s91"/>';
+  xml += '<Cell ss:StyleID="s91"><Data ss:Type="Number">'+money(totalSum)+'</Data></Cell>';
+  xml += '<Cell ss:MergeAcross="2" ss:StyleID="s91"><Data ss:Type="String">收入 '+money(incomeSum)+' / 支出 '+money(expenseSum)+'</Data></Cell>';
+  xml += '</Row>\r\n';
+  // 当前四账户余额
+  xml += '<Row ss:Height="6"><Cell ss:MergeAcross="6"><Data ss:Type="String"> </Data></Cell></Row>\r\n';
+  xml += '<Row><Cell ss:MergeAcross="6" ss:StyleID="s91"><Data ss:Type="String">当前四账户余额</Data></Cell></Row>\r\n';
+  ACCOUNTS.forEach(a=>{
+    const cfg = ACC_MAP[a.key];
+    xml += '<Row>';
+    xml += '<Cell ss:MergeAcross="3"><Data ss:Type="String">'+esc(cfg.name+'（'+cfg.desc+'）')+'</Data></Cell>';
+    xml += '<Cell ss:MergeAcross="2"><Data ss:Type="Number">'+money(DATA.accounts[a.key])+'</Data></Cell>';
+    xml += '</Row>\r\n';
+  });
+  xml += '</Table>\r\n';
+  xml += '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">\r\n';
+  xml += '  <Selected/>\r\n';
+  xml += '  <FreezePanes/>\r\n';
+  xml += '  <FrozenNoSplitHorizontal/>\r\n';
+  xml += '  <SplitHorizontal>5</SplitHorizontal>\r\n';
+  xml += '  <TopRowBottomPane>5</TopRowBottomPane>\r\n';
+  xml += '  <ActivePane>BottomPane</ActivePane>\r\n';
+  xml += '</WorksheetOptions>\r\n';
+  xml += '</Worksheet>\r\n';
+  xml += '</Workbook>\r\n';
+
+  // 下载
+  const blob = new Blob([xml], {type:'application/vnd.ms-excel;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = '四笔钱记账数据_'+getCurrentMonth()+'.json';
+  a.download = '四笔钱收支明细_'+nowMonth+'.xls';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
-  showToast('✅ 已导出数据','success');
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  showToast('✅ 已导出 Excel（含格式与合计行）','success');
 }
 function importData(file){
   const reader = new FileReader();
@@ -2776,7 +3030,7 @@ function importData(file){
     try{
       const obj = JSON.parse(e.target.result);
       if(!obj.accounts || !obj.history){
-        showToast('文件格式不正确','error');
+        showToast('文件格式不正确（仅支持之前导出的 JSON 备份）','error');
         return;
       }
       const ok = await showConfirm('导入将覆盖当前所有数据，是否继续？','确认导入','覆盖');
@@ -2853,6 +3107,10 @@ function bindEvents(){
   document.getElementById('btnSaveAlloc').addEventListener('click', saveAlloc);
   document.getElementById('btnResetAlloc').addEventListener('click', resetAlloc);
   document.getElementById('btnExport').addEventListener('click', exportData);
+  document.getElementById('btnExportFromAll').addEventListener('click', ()=>{
+    closeModal('allHistoryModal');
+    setTimeout(exportData, 100);
+  });
   document.getElementById('btnImport').addEventListener('click', ()=>{
     document.getElementById('importFile').click();
   });
