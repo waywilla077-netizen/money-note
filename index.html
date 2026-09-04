@@ -3322,19 +3322,28 @@ function bindEvents(){
     const label = document.getElementById('micLabel');
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SpeechRec){ btn.style.display='none'; return; } // 浏览器不支持则隐藏按钮
-    let micRec = null, micActive = false;
+    let micRec = null, micActive = false, silenceTimer = null;
+    const SILENCE_MS = 10000; // 10 秒无声音自动结束
+    function clearSilenceTimer(){ if(silenceTimer){ clearTimeout(silenceTimer); silenceTimer=null; } }
+    function armSilenceTimer(){
+      clearSilenceTimer();
+      silenceTimer = setTimeout(()=>{ if(micActive && micRec){ try{ micRec.stop(); }catch(e){} } }, SILENCE_MS);
+    }
     function setUi(recording){
       micActive = recording;
       btn.classList.toggle('recording', recording);
       label.textContent = recording ? '正在聆听…点击结束' : '语音输入';
+      if(!recording) clearSilenceTimer();
     }
     function buildRec(){
       const r = new SpeechRec();
       r.lang = 'zh-CN';
+      r.continuous = true;      // 持续监听，不因短暂停顿断开
       r.interimResults = true;   // 实时显示中间结果
       r.maxAlternatives = 1;
-      r.onstart = ()=>setUi(true);
+      r.onstart = ()=>{ setUi(true); armSilenceTimer(); tip.textContent='正在聆听…10 秒无声音将自动结束'; };
       r.onresult = e=>{
+        armSilenceTimer(); // 只要有识别结果（含中间结果）就重置 10 秒静音计时
         let finalTxt='', interim='';
         for(let i=e.resultIndex;i<e.results.length;i++){
           const t = e.results[i][0].transcript;
@@ -3345,21 +3354,22 @@ function bindEvents(){
           input.value = (input.value ? input.value.replace(/\s+$/,'')+' ' : '') + finalTxt.trim();
           input.focus();
         }
-        tip.textContent = interim ? '…'+interim : '';
+        tip.textContent = interim ? '…'+interim : '正在聆听…10 秒无声音将自动结束';
       };
       r.onerror = e=>{
+        if(e.error==='no-speech' || e.error==='aborted') return; // 静音超时/手动结束，属正常
         let msg;
         if(e.error==='not-allowed' || e.error==='service-not-allowed') msg = '麦克风权限被拒绝，请在浏览器地址栏允许麦克风后重试';
         else if(e.error==='network') msg = '识别服务网络不可用（Chrome 需联网谷歌服务，建议改用 Edge / Safari）';
-        else if(e.error==='no-speech') msg = '没听到声音，请再试一次';
+        else if(e.error==='audio-capture') msg = '未检测到麦克风设备';
         else msg = '语音识别出错：'+e.error;
         showToast(msg);
       };
-      r.onend = ()=>{ setUi(false); if(tip.textContent.startsWith('…')) tip.textContent=''; };
+      r.onend = ()=>{ setUi(false); clearSilenceTimer(); if(tip.textContent.startsWith('…')||tip.textContent.startsWith('正在聆听')) tip.textContent=''; };
       return r;
     }
     btn.addEventListener('click', ()=>{
-      if(micActive){ if(micRec) micRec.stop(); return; }
+      if(micActive){ if(micRec) micRec.stop(); return; } // 手动点击结束
       micRec = buildRec(); // 每次新建实例，避免部分浏览器复用报错
       try{ micRec.start(); }
       catch(err){ setUi(false); showToast('语音启动失败，请重试'); }
