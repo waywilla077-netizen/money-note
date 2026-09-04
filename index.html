@@ -388,6 +388,7 @@ body{
   padding:12px 16px;
   cursor:pointer;
   font-family:inherit;
+  white-space:nowrap;
   transition:transform 0.12s,opacity 0.15s,background 0.15s;
   min-height:44px;
   display:inline-flex;
@@ -1268,8 +1269,8 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
     </div>
     <div class="modal-footer" style="justify-content:space-between;">
       <button class="btn btn-danger" id="btnDeleteTx" style="margin:0;background:#ffe5e7;color:#d9304a;">删除该笔</button>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-secondary" data-close="editModal">取消</button>
+      <div style="display:flex;gap:8px;flex:1;margin-left:8px;">
+        <button class="btn btn-secondary" data-close="editModal" style="margin:0;">取消</button>
         <button class="btn btn-primary" id="btnSaveEdit" style="margin:0;">保存修改</button>
       </div>
     </div>
@@ -1742,13 +1743,13 @@ function showConfirm(text, title, okText){
     document.getElementById('confirmTitle').textContent = title||'提示';
     document.getElementById('confirmText').innerHTML = text;
     document.getElementById('confirmOk').textContent = okText||'确定';
-    document.getElementById('confirmModal').classList.add('show');
+    openModal('confirmModal');
     const ok = document.getElementById('confirmOk');
     const cancel = document.getElementById('confirmCancel');
     const cleanup = ()=>{
       ok.removeEventListener('click', onOk);
       cancel.removeEventListener('click', onCancel);
-      document.getElementById('confirmModal').classList.remove('show');
+      closeModal('confirmModal');
     };
     const onOk = ()=>{cleanup();resolve(true);};
     const onCancel = ()=>{cleanup();resolve(false);};
