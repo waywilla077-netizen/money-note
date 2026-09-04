@@ -1189,12 +1189,30 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
 <div class="modal-mask" id="matchModal">
   <div class="modal" style="border-radius:18px;max-width:360px;">
     <div class="modal-header">
-      <div class="modal-title">🔍 账户匹配</div>
+      <div class="modal-title">账户匹配</div>
       <button class="modal-close" data-close="matchModal">✕</button>
     </div>
     <div class="modal-body">
       <div class="confirm-text" id="matchText"></div>
       <div class="reassign-btns" id="matchBtns" style="margin-top:14px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Multi-expense confirm Modal -->
+<div class="modal-mask" id="multiMatchModal">
+  <div class="modal" style="border-radius:18px;max-width:460px;">
+    <div class="modal-header">
+      <div class="modal-title">识别到多笔支出</div>
+      <button class="modal-close" data-close="multiMatchModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-text" id="multiMatchText" style="margin-bottom:10px;"></div>
+      <div id="multiMatchList" style="max-height:52vh;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close="multiMatchModal" style="margin:0;">取消</button>
+      <button class="btn btn-primary" id="btnMultiConfirm" style="margin:0;">全部确认入账</button>
     </div>
   </div>
 </div>
@@ -2559,7 +2577,7 @@ async function handleSmartInput(){
   let amount = extractAmount(text);
   const intent = detectIntent(text);
   const matched = matchExpenseAccount(text);
-  const ruleUncertain = (amount<=0) || (intent==='unknown' && !detectIncomeType(text)) || (matched.length>1) || /昨天|前天|大前天|刚才|最近|AA|平摊|拆分|分/.test(text);
+  const ruleUncertain = (amount<=0) || (intent==='unknown' && !detectIncomeType(text)) || (matched.length>1) || countAmounts(text)>=2 || /昨天|前天|大前天|刚才|最近|AA|平摊|拆分|分/.test(text);
   if(aiReady() && (aiAlways || ruleUncertain)){
     showToast('AI 正在识别…（可随时点右上角 × 取消）','info');
     const ai = await aiParseText(text);
@@ -2580,6 +2598,13 @@ async function handleSmartInput(){
     document.getElementById('smartInput').value='';
     return;
   }
+  // 一句多笔支出：拆段解析，≥2 笔则走批量确认
+  const multi = parseMultiExpense(text);
+  if(multi.length >= 2){
+    await showMultiConfirm(multi);
+    document.getElementById('smartInput').value='';
+    return;
+  }
   if(matched.length===0){
     showToast('未匹配到支出账户，可在设置启用 AI 兜底或使用手动录入','error');
     return;
@@ -2592,6 +2617,92 @@ async function handleSmartInput(){
   remark = remark.replace(/[,，。、!?！？\s]+/g,' ').trim();
   if(!remark) remark = ACC_MAP[targetAcc].name;
   await showMatchConfirm(targetAcc, amount, remark, matched);
+}
+
+/* ================== 一句多笔支出拆分 ================== */
+// 统计句中金额个数（阿拉伯数字 + 可解析的中文数字串）
+function countAmounts(text){
+  let n = (text.match(/\d+(?:\.\d+)?/g)||[]).length;
+  const cn = text.match(/[零一二三四五六七八九两百十千万亿]+/g)||[];
+  for(const s of cn){ if(s.length>=2 && chineseToNumber(s)>0) n++; }
+  return n;
+}
+// 按标点/连接词/空格拆段，每段独立解析金额与账户
+function parseMultiExpense(text){
+  // 保护"15 元/块/钱"中的空格不被当分隔符
+  const normalized = text.replace(/(\d+(?:\.\d+)?)\s+(元|块|钱)/g, '$1$2');
+  const segs = normalized.split(/[,，、；;。\s]+|然后|还有|另外|接着|之后|后来|顺便|以及|再(?:买|吃|喝|付|花|充|去)/)
+    .map(s=>s.trim()).filter(Boolean);
+  const out = [];
+  for(const seg of segs){
+    const amt = extractAmount(seg);
+    if(amt<=0) continue;
+    const accs = matchExpenseAccount(seg);
+    let remark = seg
+      .replace(/\d+(?:\.\d+)?\s*(块|元)?/g,'')
+      .replace(/[零一二三四五六七八九十百千万两]+/g,'')
+      .replace(/花了|花掉|消费|支出|买了|付了|买|付|充了|充值|吃饭|块|元|今天|昨天|前天|大前天|明天|晚上|中午|早上|下午|上午|凌晨/g,'')
+      .replace(/[,，。、!?！？\s]+/g,' ').trim();
+    out.push({ amount:amt, account:accs[0]||null, remark:remark });
+  }
+  return out;
+}
+// 多笔确认弹窗：每笔可改账户，确认后批量入账
+function showMultiConfirm(entries){
+  return new Promise(resolve=>{
+    document.getElementById('multiMatchText').innerHTML =
+      '共识别到 <b>'+entries.length+'</b> 笔支出，合计 <b style="color:#d9304a;">¥'+fmt(entries.reduce((s,e)=>s+e.amount,0))+'</b>。可逐笔修改账户后入账：';
+    const list = document.getElementById('multiMatchList');
+    list.innerHTML = '';
+    const order = ['survival','improve','social','reserve'];
+    entries.forEach((e, idx)=>{
+      const row = document.createElement('div');
+      row.style.cssText = 'border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:var(--card-bg);';
+      const accBtns = order.map(k=>{
+        const a = ACC_MAP[k];
+        const sel = (e.account===k);
+        return `<button type="button" data-idx="${idx}" data-acc="${k}" class="multi-acc-btn${sel?' sel':''}"
+          style="flex:1;padding:6px 2px;border-radius:8px;border:1px solid ${sel?a.color:'var(--border)'};background:${sel?a.color+'18':'transparent'};color:${sel?a.color:'var(--text-muted)'};font-size:12px;cursor:pointer;">${a.name}</button>`;
+      }).join('');
+      row.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="font-size:13px;color:var(--text-muted);">第 ${idx+1} 笔 · <b style="color:#d9304a;font-size:15px;">-¥${fmt(e.amount)}</b></div>
+          <div style="font-size:12px;color:var(--text-muted);">${e.remark||'（无备注）'}</div>
+        </div>
+        <div style="display:flex;gap:6px;">${accBtns}</div>`;
+      list.appendChild(row);
+    });
+    // 账户按钮切换
+    list.querySelectorAll('.multi-acc-btn').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const idx = +b.dataset.idx, acc = b.dataset.acc;
+        entries[idx].account = acc;
+        list.querySelectorAll('.multi-acc-btn[data-idx="'+idx+'"]').forEach(x=>{
+          const a = ACC_MAP[x.dataset.acc];
+          const on = x.dataset.acc===acc;
+          x.classList.toggle('sel', on);
+          x.style.borderColor = on ? a.color : 'var(--border)';
+          x.style.background = on ? a.color+'18' : 'transparent';
+          x.style.color = on ? a.color : 'var(--text-muted)';
+        });
+      });
+    });
+    const confirmBtn = document.getElementById('btnMultiConfirm');
+    const handler = async ()=>{
+      confirmBtn.removeEventListener('click', handler);
+      closeModal('multiMatchModal');
+      let ok = 0;
+      for(const e of entries){
+        const acc = e.account || 'survival';
+        const done = await addExpense(acc, e.amount, e.remark || ACC_MAP[acc].name, true);
+        if(done) ok++;
+      }
+      if(ok>0) showToast('已批量记录 '+ok+' 笔支出，合计 ¥'+fmt(entries.reduce((s,x)=>s+x.amount,0)),'success');
+      resolve(ok);
+    };
+    confirmBtn.addEventListener('click', handler);
+    openModal('multiMatchModal');
+  });
 }
 
 function showMatchConfirm(defaultAcc, amount, remark, matchedList){
