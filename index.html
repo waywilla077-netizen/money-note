@@ -3382,6 +3382,15 @@ else updateSyncStatus(navigator.onLine ? 'pending' : 'offline');
 if(ghToken) syncFromCloud().catch(e=>console.log('启动同步失败', e));
 else setTimeout(()=>{ if(!ghToken) showToast('设置里填入 GitHub Token（仅勾 gist）即可启用手机/电脑跨端同步','success'); }, 800);
 
+// 页面切回/获得焦点时自动拉取云端最新，避免长期开着的页面看不到其他设备的新数据
+// 本地有未上传改动时跳过拉取（与冲突保护逻辑一致：优先保留本地并推送）
+function autoPullOnFocus(){
+  if(!ghToken || isCloudLoading || localDirty) return;
+  syncFromCloud().catch(e=>console.log('聚焦同步失败', e));
+}
+window.addEventListener('focus', autoPullOnFocus);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) autoPullOnFocus(); });
+
 // 网络恢复时自动同步（无 Token 不触发云端动作）
 window.addEventListener('online', ()=>{
   if(!ghToken){ updateSyncStatus('error'); return; }
