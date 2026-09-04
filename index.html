@@ -2824,16 +2824,12 @@ function renderBankCards(){
   let html = '';
   cards.forEach(c=>{
     html += `
-      <div class="bank-card-item" data-id="${c.id}" style="display:flex;align-items:center;justify-content:space-between;background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow);">
-        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-          <span style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6b7fd4,#8ab3b3);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          </span>
-          <div style="min-width:0;">
-            <div style="font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
-            <div style="font-size:18px;font-weight:800;color:${(+c.balance)<0?'#d9304a':'var(--text)'};">¥${fmt(+c.balance||0)}</div>
-          </div>
-        </div>
+      <div class="bank-card-item" data-id="${c.id}" style="display:flex;align-items:center;gap:10px;background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow);">
+        <span style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6b7fd4,#8ab3b3);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        </span>
+        <div style="font-weight:600;font-size:15px;min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+        <div style="font-size:18px;font-weight:800;flex-shrink:0;color:${(+c.balance)<0?'#d9304a':'var(--text)'};">¥${fmt(+c.balance||0)}</div>
         <button class="bank-card-edit" data-id="${c.id}" title="编辑" style="border:none;background:transparent;cursor:pointer;color:var(--text-muted);padding:6px;flex-shrink:0;">${ICONS.edit}</button>
       </div>`;
   });
