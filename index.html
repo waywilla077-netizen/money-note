@@ -3184,7 +3184,7 @@ function openEditTx(id){
   if(!tx) return;
   editTargetId = id;
   editPickedAccount = tx.account;
-  document.getElementById('editTypeText').textContent = (tx.type==='income'?'收入（会按来源规则分流，编辑仅调整单条分流记录）':'支出') + ' · id:'+id.slice(0,8);
+  document.getElementById('editTypeText').textContent = tx.type==='income' ? '收入（会按来源规则分流，编辑仅调整单条分流记录）' : '支出';
   document.getElementById('editAmount').value = tx.amount;
   document.getElementById('editRemark').value = tx.remark || '';
   const d = new Date(tx.timestamp);
