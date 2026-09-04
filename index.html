@@ -251,6 +251,10 @@ body{
   position:relative;
   overflow:hidden;
   transition:transform 0.2s, box-shadow 0.2s;
+  cursor:pointer;
+}
+.acc-card:hover{
+  box-shadow:0 6px 18px rgba(0,0,0,0.10);
 }
 .acc-card:active{
   transform:scale(0.98);
@@ -1224,7 +1228,7 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
 <div class="modal-mask" id="allHistoryModal">
   <div class="modal" style="border-radius:18px;max-width:560px;">
     <div class="modal-header">
-      <div class="modal-title">📋 全部收支明细（按时间倒序）</div>
+      <div class="modal-title">全部收支明细（按时间倒序）</div>
       <button class="modal-close" data-close="allHistoryModal">✕</button>
     </div>
     <div class="modal-body" style="padding:8px 4px 8px 12px;">
@@ -1233,6 +1237,23 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
     <div class="modal-footer">
       <button class="btn btn-secondary" id="btnExportFromAll" style="margin:0;">导出 Excel</button>
       <button class="btn btn-primary" data-close="allHistoryModal" style="margin:0;">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Account Detail Modal -->
+<div class="modal-mask" id="accountDetailModal">
+  <div class="modal" style="border-radius:18px;max-width:560px;">
+    <div class="modal-header">
+      <div class="modal-title" id="accountDetailTitle">账户明细</div>
+      <button class="modal-close" data-close="accountDetailModal">✕</button>
+    </div>
+    <div class="modal-body" style="padding:8px 4px 8px 12px;">
+      <div id="accountDetailSummary" style="padding:6px 12px 10px;font-size:13px;color:#666;"></div>
+      <div id="accountDetailList" style="max-height:60vh;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" data-close="accountDetailModal" style="margin:0;">关闭</button>
     </div>
   </div>
 </div>
@@ -2596,6 +2617,9 @@ function renderAll(){
   renderAccounts();
   renderHistory();
   renderScheme();
+  // 账户明细弹窗若打开中，同步刷新内容（编辑/删除后保持最新）
+  const adModal = document.getElementById('accountDetailModal');
+  if(adModal && adModal.classList.contains('show') && accountDetailKey) renderAccountDetailList();
 }
 function renderTotal(){
   const sum = DATA.accounts.survival + DATA.accounts.improve + DATA.accounts.social + DATA.accounts.reserve;
@@ -2623,6 +2647,7 @@ function renderAccounts(){
     const card = document.createElement('div');
     card.className = 'acc-card';
     card.style.setProperty('--acc-color', acc.color);
+    card.title = '点击查看「'+acc.name+'」收支明细';
     card.innerHTML = `
       <div class="acc-head">
         <span class="acc-icon" style="color:${acc.color}">${acc.icon}</span>
@@ -2635,8 +2660,55 @@ function renderAccounts(){
       </div>
       <div class="progress"><div class="progress-bar" style="width:${pct}%;background:${barColor};"></div></div>
     `;
+    card.addEventListener('click', ()=>openAccountDetail(acc.key));
     grid.appendChild(card);
   }
+}
+/* ================== 账户明细 Modal（点击账户卡片） ================== */
+let accountDetailKey = null;
+function openAccountDetail(key){
+  accountDetailKey = key;
+  renderAccountDetailList();
+  openModal('accountDetailModal');
+}
+function renderAccountDetailList(){
+  const key = accountDetailKey;
+  const acc = ACC_MAP[key];
+  if(!acc) return;
+  const balance = +(DATA.accounts[key]||0).toFixed(2);
+  document.getElementById('accountDetailTitle').textContent = acc.name+' · 收支明细';
+  const items = DATA.history.filter(h=>h.account===key).slice().reverse(); // 时间倒序
+  const inc = items.filter(h=>h.type==='income').reduce((s,h)=>s+(+h.amount||0),0);
+  const exp = items.filter(h=>h.type!=='income').reduce((s,h)=>s+(+h.amount||0),0);
+  document.getElementById('accountDetailSummary').innerHTML =
+    `当前余额 <b style="color:${acc.color};">¥${fmt(balance)}</b> · 累计收入 <b style="color:#0a8754;">¥${fmt(inc)}</b> · 累计支出 <b style="color:#d9304a;">¥${fmt(exp)}</b> · 共 ${items.length} 笔`;
+  const list = document.getElementById('accountDetailList');
+  if(items.length===0){
+    list.innerHTML = '<div class="empty-state"><div class="icon" style="color:#a8acbf;">'+ICONS.empty+'</div>该账户暂无收支记录</div>';
+    return;
+  }
+  list.innerHTML = '';
+  const DEL_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"></path><path d="M10 11v6M14 11v6M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>';
+  for(const h of items){
+    const isIncome = h.type==='income';
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <div class="hist-icon" style="color:${isIncome?'var(--accent)':acc.color};">${isIncome?ICONS.money:acc.icon}</div>
+      <div class="hist-body">
+        <div class="hist-remark">${h.remark || (isIncome?(h.incomeType||'收入')+'分流':acc.name)}</div>
+        <div class="hist-meta">
+          ${isIncome&&h.incomeType ? '<span class="hist-tag" style="background:linear-gradient(135deg,#6b7fd4,#8ab3b3);">'+h.incomeType+'</span>' : `<span class="hist-tag" style="background:${acc.color};">${acc.name}</span>`}
+          <span>${fmtTime(h.timestamp)}</span>
+        </div>
+      </div>
+      <div class="hist-amount ${isIncome?'income':'expense'}">${isIncome?'+':'-'}¥${fmt(h.amount)}</div>
+      <button class="hist-edit" data-id="${h.id}" title="编辑" style="color:var(--text-muted);">${ICONS.edit}</button>
+      <button class="hist-delete" data-id="${h.id}" title="删除">${DEL_ICON}</button>
+    `;
+    list.appendChild(item);
+  }
+  bindHistoryEvents(list);
 }
 function renderHistory(){
   const list = document.getElementById('historyList');
@@ -2713,7 +2785,7 @@ function renderHistory(){
   if(all.length > 5){
     const more = document.createElement('div');
     more.className = 'show-all-btn';
-    more.innerHTML = `📋 查看全部明细（共 ${all.length} 条，按时间倒序）→`;
+    more.innerHTML = `查看全部明细（共 ${all.length} 条，按时间倒序）→`;
     more.id = 'btnShowAllHistory';
     more.addEventListener('click', openAllHistory);
     list.parentElement.appendChild(more);
