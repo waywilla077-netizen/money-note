@@ -259,6 +259,19 @@ body{
 .acc-card:active{
   transform:scale(0.98);
 }
+/* 语音输入按钮 */
+.btn-mic{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 14px;border-radius:10px;border:1px solid var(--border);
+  background:var(--card-bg);cursor:pointer;font-size:14px;color:var(--text);
+  transition:all .2s;white-space:nowrap;
+}
+.btn-mic:hover{ box-shadow:0 2px 8px rgba(0,0,0,.08); }
+.btn-mic.recording{
+  background:#fdecec;border-color:#e74c5b;color:#d9304a;
+  animation:micPulse 1.2s infinite;
+}
+@keyframes micPulse{ 0%,100%{opacity:1} 50%{opacity:.55} }
 .acc-card::before{
   content:"";
   position:absolute;
@@ -870,10 +883,17 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
       <div class="smart-box">
         <textarea class="smart-input" id="smartInput" placeholder="例如：奖学金到账五千&#10;或：食堂吃饭花了20&#10;或：把刚才那笔改成悦己"></textarea>
         <div class="smart-hint">支持中文数字（五千/三百/一万二）、收入关键词、支出自动匹配账户、自然语言纠错指令。</div>
-        <button class="btn btn-primary" id="btnSmart">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13m0 0l5 5m-5-5l-5 5"/></svg>
-          智能识别
-        </button>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn-mic" id="btnMic" type="button" title="点击开始语音输入">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <span id="micLabel">语音输入</span>
+          </button>
+          <button class="btn btn-primary" id="btnSmart" style="flex:1;margin:0;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13m0 0l5 5m-5-5l-5 5"/></svg>
+            智能识别
+          </button>
+        </div>
+        <div id="micTip" style="font-size:12px;color:#8a8fa8;margin-top:6px;min-height:14px;"></div>
       </div>
     </div>
 
@@ -3296,10 +3316,61 @@ function bindEvents(){
       if(e.target === m) m.classList.remove('show');
     });
   });
+  /* ============ 语音输入（Web Speech API，识别结果填入智能输入框） ============ */
+  function initVoiceInput(){
+    const btn = document.getElementById('btnMic');
+    const tip = document.getElementById('micTip');
+    const label = document.getElementById('micLabel');
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SpeechRec){ btn.style.display='none'; return; } // 浏览器不支持则隐藏按钮
+    let micRec = null, micActive = false;
+    function setUi(recording){
+      micActive = recording;
+      btn.classList.toggle('recording', recording);
+      label.textContent = recording ? '正在聆听…点击结束' : '语音输入';
+    }
+    function buildRec(){
+      const r = new SpeechRec();
+      r.lang = 'zh-CN';
+      r.interimResults = true;   // 实时显示中间结果
+      r.maxAlternatives = 1;
+      r.onstart = ()=>setUi(true);
+      r.onresult = e=>{
+        let finalTxt='', interim='';
+        for(let i=e.resultIndex;i<e.results.length;i++){
+          const t = e.results[i][0].transcript;
+          if(e.results[i].isFinal) finalTxt += t; else interim += t;
+        }
+        const input = document.getElementById('smartInput');
+        if(finalTxt){
+          input.value = (input.value ? input.value.replace(/\s+$/,'')+' ' : '') + finalTxt.trim();
+          input.focus();
+        }
+        tip.textContent = interim ? '…'+interim : '';
+      };
+      r.onerror = e=>{
+        let msg;
+        if(e.error==='not-allowed' || e.error==='service-not-allowed') msg = '麦克风权限被拒绝，请在浏览器地址栏允许麦克风后重试';
+        else if(e.error==='network') msg = '识别服务网络不可用（Chrome 需联网谷歌服务，建议改用 Edge / Safari）';
+        else if(e.error==='no-speech') msg = '没听到声音，请再试一次';
+        else msg = '语音识别出错：'+e.error;
+        showToast(msg);
+      };
+      r.onend = ()=>{ setUi(false); if(tip.textContent.startsWith('…')) tip.textContent=''; };
+      return r;
+    }
+    btn.addEventListener('click', ()=>{
+      if(micActive){ if(micRec) micRec.stop(); return; }
+      micRec = buildRec(); // 每次新建实例，避免部分浏览器复用报错
+      try{ micRec.start(); }
+      catch(err){ setUi(false); showToast('语音启动失败，请重试'); }
+    });
+  }
   document.getElementById('btnSmart').addEventListener('click', handleSmartInput);
   document.getElementById('smartInput').addEventListener('keydown', e=>{
     if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); handleSmartInput(); }
   });
+  initVoiceInput();
   // 手动录入 tab
   document.querySelectorAll('.tab').forEach(t=>{
     t.addEventListener('click', ()=>{
