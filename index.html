@@ -41,7 +41,7 @@ body{
   font-size:15px;
   line-height:1.5;
   -webkit-font-smoothing:antialiased;
-  padding-bottom:20px;
+  padding-bottom:84px; /* 给底部固定操作栏留出空间，防止最后内容被遮挡 */
   position:relative;
   overflow-x:hidden;
 }
@@ -62,6 +62,7 @@ body{
     grid-template-columns:320px 1fr;
     gap:24px;
     padding:24px;
+    padding-bottom:84px; /* 底部固定操作栏占位，右侧吸顶列滚到底时不被遮挡 */
     align-items:flex-start;
   }
   .app .header-col{
