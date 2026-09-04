@@ -1713,8 +1713,14 @@ function showConfirm(text, title, okText){
     cancel.addEventListener('click', onCancel);
   });
 }
-function openModal(id){ document.getElementById(id).classList.add('show'); }
-function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+let modalZ = 100; // 弹窗层级，每打开一个递增，保证后打开的（如编辑窗）盖在前面
+function openModal(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.style.zIndex = String(++modalZ);
+  el.classList.add('show');
+}
+function closeModal(id){ const el=document.getElementById(id); if(el) el.classList.remove('show'); }
 
 /* ================== 中文数字转换 ================== */
 function chineseToNumber(str){
