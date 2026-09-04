@@ -1269,7 +1269,11 @@ select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3C
       <button class="modal-close" data-close="allHistoryModal">✕</button>
     </div>
     <div class="modal-body" style="padding:8px 4px 8px 12px;">
-      <div id="allHistoryList" style="max-height:65vh;overflow-y:auto;"></div>
+      <div style="padding:0 8px 10px;">
+        <input type="text" id="allHistorySearch" placeholder="搜索名称 / 备注 / 来源 / 金额，如：奶茶、奖学金、20"
+          style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:10px;border:1px solid var(--border);font-size:14px;background:var(--card-bg);">
+      </div>
+      <div id="allHistoryList" style="max-height:58vh;overflow-y:auto;"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="btnExportFromAll" style="margin:0;">导出 Excel</button>
@@ -2767,6 +2771,9 @@ function renderAll(){
   // 账户明细弹窗若打开中，同步刷新内容（编辑/删除后保持最新）
   const adModal = document.getElementById('accountDetailModal');
   if(adModal && adModal.classList.contains('show') && accountDetailKey) renderAccountDetailList();
+  // 全部明细弹窗若打开中，同步刷新（保留搜索关键词）
+  const ahModal = document.getElementById('allHistoryModal');
+  if(ahModal && ahModal.classList.contains('show')) renderAllHistoryList();
 }
 function renderTotal(){
   const sum = DATA.accounts.survival + DATA.accounts.improve + DATA.accounts.social + DATA.accounts.reserve;
@@ -2961,11 +2968,22 @@ function bindHistoryEvents(scope){
 }
 /* ================== 全部明细 Modal ================== */
 function openAllHistory(){
+  const kw = document.getElementById('allHistorySearch');
+  if(kw) kw.value = '';
   renderAllHistoryList();
   openModal('allHistoryModal');
 }
+// 关键词是否匹配一条记录（名称/备注/来源/账户/金额）
+function txMatchesKeyword(h, kw){
+  if(!kw) return true;
+  const acc = ACC_MAP[h.account];
+  const hay = [h.remark||'', h.incomeType||'', acc?acc.name:'', fmt(h.amount), String(h.amount)].join(' ');
+  return hay.toLowerCase().includes(kw);
+}
 function renderAllHistoryList(){
   const list = document.getElementById('allHistoryList');
+  const kwRaw = (document.getElementById('allHistorySearch')||{}).value || '';
+  const kw = kwRaw.trim().toLowerCase();
   const all = DATA.history.slice().reverse();
   if(all.length===0){
     list.innerHTML = '<div class="empty-state"><div class="icon" style="color:#a8acbf;">'+ICONS.empty+'</div>暂无记录</div>';
@@ -2975,6 +2993,7 @@ function renderAllHistoryList(){
   const DEL_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6"></path><path d="M10 11v6M14 11v6M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2"/></svg>';
   const { groups, idToGroup } = groupIncomeTransactions(DATA.history);
   const renderedGroups = new Set();
+  let shown = 0;
   for(const h of all){
     const isIncome = h.type==='income';
     if(isIncome){
@@ -2983,6 +3002,11 @@ function renderAllHistoryList(){
         if(renderedGroups.has(gkey)) continue;
         renderedGroups.add(gkey);
         const g = groups.get(gkey);
+        // 收入组：组备注/来源/任一分流备注/账户名/总金额 命中即显示
+        const groupHit = !kw || g.items.some(it=>txMatchesKeyword(it, kw)) ||
+          [g.remark||'', g.incomeType||'', fmt(g.totalAmount), String(g.totalAmount)].join(' ').toLowerCase().includes(kw);
+        if(!groupHit) continue;
+        shown++;
         const accMini = Object.keys(g.accounts||{}).sort((a,b)=>(g.accounts[b]||0)-(g.accounts[a]||0)).slice(0,4).map(a=>{
           const c = ACC_MAP[a]; return `<span class="hist-tag" style="background:${c.color}22;color:${c.color};border:1px solid ${c.color}33;">${c.name} ¥${fmt(g.accounts[a]||0)}</span>`;
         }).join(' ');
@@ -3006,6 +3030,8 @@ function renderAllHistoryList(){
         continue;
       }
     }
+    if(!txMatchesKeyword(h, kw)) continue;
+    shown++;
     const acc = ACC_MAP[h.account];
     const item = document.createElement('div');
     item.className = 'history-item';
@@ -3024,6 +3050,10 @@ function renderAllHistoryList(){
       <button class="hist-delete" data-id="${h.id}" title="删除">${DEL_ICON}</button>
     `;
     list.appendChild(item);
+  }
+  if(shown===0){
+    list.innerHTML = '<div class="empty-state"><div class="icon" style="color:#a8acbf;">'+ICONS.empty+'</div>未找到匹配「'+kwRaw.trim()+'」的记录</div>';
+    return;
   }
   bindHistoryEvents(list);
 }
@@ -3545,6 +3575,8 @@ function bindEvents(){
     closeModal('allHistoryModal');
     setTimeout(exportData, 100);
   });
+  // 全部明细搜索：输入即过滤
+  document.getElementById('allHistorySearch').addEventListener('input', renderAllHistoryList);
   document.getElementById('btnGenAdvice').addEventListener('click', generateFinancialAdvice);
   document.getElementById('btnImport').addEventListener('click', ()=>{
     document.getElementById('importFile').click();
