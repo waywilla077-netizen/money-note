@@ -2647,11 +2647,16 @@ function parseMultiExpense(text){
   }
   return out;
 }
-// 多笔确认弹窗：每笔可改账户，确认后批量入账
+// 多笔确认弹窗：每笔可改金额、备注、账户，确认后批量入账
 function showMultiConfirm(entries){
   return new Promise(resolve=>{
-    document.getElementById('multiMatchText').innerHTML =
-      '共识别到 <b>'+entries.length+'</b> 笔支出，合计 <b style="color:#d9304a;">¥'+fmt(entries.reduce((s,e)=>s+e.amount,0))+'</b>。可逐笔修改账户后入账：';
+    const totalEl = document.getElementById('multiMatchText');
+    const refreshTotal = ()=>{
+      const sum = entries.reduce((s,e)=>s+(+e.amount||0),0);
+      const valid = entries.filter(e=>+e.amount>0).length;
+      totalEl.innerHTML = '共识别到 <b>'+valid+'</b> 笔支出，合计 <b style="color:#d9304a;">¥'+fmt(sum)+'</b>。可逐笔修改金额、缘由和账户后入账：';
+    };
+    refreshTotal();
     const list = document.getElementById('multiMatchList');
     list.innerHTML = '';
     const order = ['survival','improve','social','reserve'];
@@ -2665,12 +2670,22 @@ function showMultiConfirm(entries){
           style="flex:1;padding:6px 2px;border-radius:8px;border:1px solid ${sel?a.color:'var(--border)'};background:${sel?a.color+'18':'transparent'};color:${sel?a.color:'var(--text-muted)'};font-size:12px;cursor:pointer;">${a.name}</button>`;
       }).join('');
       row.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div style="font-size:13px;color:var(--text-muted);">第 ${idx+1} 笔 · <b style="color:#d9304a;font-size:15px;">-¥${fmt(e.amount)}</b></div>
-          <div style="font-size:12px;color:var(--text-muted);">${e.remark||'（无备注）'}</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+          <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">第 ${idx+1} 笔</span>
+          <input type="number" min="0" step="0.01" data-idx="${idx}" class="multi-amt" value="${e.amount}"
+            style="width:78px;padding:6px 8px;border-radius:8px;border:1px solid var(--border);font-size:15px;font-weight:700;color:#d9304a;background:transparent;" placeholder="金额">
+          <input type="text" data-idx="${idx}" class="multi-rmk" value="${(e.remark||'').replace(/"/g,'&quot;')}"
+            style="flex:1;min-width:0;padding:6px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:transparent;" placeholder="支出缘由（如：食堂午餐）">
         </div>
         <div style="display:flex;gap:6px;">${accBtns}</div>`;
       list.appendChild(row);
+    });
+    // 金额 / 备注 编辑实时同步
+    list.querySelectorAll('.multi-amt').forEach(inp=>{
+      inp.addEventListener('input', ()=>{ entries[+inp.dataset.idx].amount = parseFloat(inp.value)||0; refreshTotal(); });
+    });
+    list.querySelectorAll('.multi-rmk').forEach(inp=>{
+      inp.addEventListener('input', ()=>{ entries[+inp.dataset.idx].remark = inp.value.trim(); });
     });
     // 账户按钮切换
     list.querySelectorAll('.multi-acc-btn').forEach(b=>{
@@ -2691,13 +2706,15 @@ function showMultiConfirm(entries){
     const handler = async ()=>{
       confirmBtn.removeEventListener('click', handler);
       closeModal('multiMatchModal');
-      let ok = 0;
+      let ok = 0, sum = 0;
       for(const e of entries){
+        const amt = +e.amount;
+        if(!(amt>0)) continue; // 金额被改为 0/空 的跳过
         const acc = e.account || 'survival';
-        const done = await addExpense(acc, e.amount, e.remark || ACC_MAP[acc].name, true);
-        if(done) ok++;
+        const done = await addExpense(acc, amt, e.remark || ACC_MAP[acc].name, true);
+        if(done){ ok++; sum += amt; }
       }
-      if(ok>0) showToast('已批量记录 '+ok+' 笔支出，合计 ¥'+fmt(entries.reduce((s,x)=>s+x.amount,0)),'success');
+      if(ok>0) showToast('已批量记录 '+ok+' 笔支出，合计 ¥'+fmt(sum),'success');
       resolve(ok);
     };
     confirmBtn.addEventListener('click', handler);
